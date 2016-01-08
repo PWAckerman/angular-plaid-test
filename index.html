@@ -1,0 +1,29 @@
+
+  <head>
+    <meta charset="utf-8">
+    <title>PushBudget</title>
+  </head>
+  <body ng-app="plaidLink" ng-controller="plaidCtrl">
+    <form id="some-id" method="GET" action="?"></form>
+    <div ng-repeat="account in userData.accounts">
+      Account Name:<span>{{account.meta.name}}</span></br>
+      Account Type: <span>{{account.subtype}}</span></br>
+      Account Number: <span>{{account.meta.number}}</span></br>
+      Account Limit: <span>{{account.meta.limit}}</span></br>
+      Available Balance:<span>{{account.balance.available}}</span></br>
+      Current Balance: <span>{{account.balance.current}}</span></br>
+      <br>
+    </div>
+    <!-- <div ng-repeat="transaction in userData.transactions">
+
+    </div> -->
+    <button ng-click="openPlaidLink()">PLAID LINK</button>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular.min.js"></script>
+    <script src="node_modules/angular-plaid-link/src/angular-plaid-link.js"></script>
+    <script src="app.js"></script>
+    <script src="plaidCtrl.js"></script>
+    <script
+    src="https://cdn.plaid.com/link/stable/link-initialize.js"
+    >
+  </script>
+  </body>
