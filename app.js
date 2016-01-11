@@ -6,8 +6,9 @@ angular.module('plaidLink', ['angular-plaid-link'])
         plaidLinkProvider.init({
             clientName: 'My App',
             env: 'tartan',
-            key: 'test_key',
-            product: 'auth'
+            key: 'f15715da6d0369ec33a57f678a1bf9',
+            product: 'connect',
+            webhook: 'https://11159e49.ngrok.io/webhook'
         });
     }
 ])

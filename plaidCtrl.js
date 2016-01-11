@@ -4,8 +4,9 @@ angular.module('plaidLink').controller('plaidCtrl', ['plaidLink', '$scope', '$ht
         {
             clientName: 'My App',
             env: 'tartan',
-            key: 'test_key',
-            product: 'auth'
+            key: 'f15715da6d0369ec33a57f678a1bf9',
+            product: 'connect',
+            webhook: 'https://11159e49.ngrok.io/webhook'
         },
 
         // success callback
@@ -15,9 +16,12 @@ angular.module('plaidLink').controller('plaidCtrl', ['plaidLink', '$scope', '$ht
               method: 'POST',
               url: '/authenticate',
               data: {
+                userName: $scope.login.userName,
+                userPassword: $scope.login.userPassword,
                 public_token: token
               }
             }).then(function(response){
+              console.log(response.data)
               $scope.userData = response.data;
             })
             // pass the token to your sever to retrieve an `access_token`
@@ -28,6 +32,7 @@ angular.module('plaidLink').controller('plaidCtrl', ['plaidLink', '$scope', '$ht
         function() {
           console.log('exit')
         });
+        $scope.login = {};
         $scope.openPlaidLink = function(){
           plaidLink.open()
         }

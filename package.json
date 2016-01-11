@@ -12,6 +12,8 @@
     "angular-plaid-link": "^1.0.0",
     "body-parser": "^1.14.2",
     "express": "^4.13.3",
-    "plaid": "^1.0.8"
+    "mongoose": "^4.3.4",
+    "plaid": "^1.0.8",
+    "q": "^1.4.1"
   }
 }
