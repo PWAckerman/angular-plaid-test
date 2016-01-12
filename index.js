@@ -8,8 +8,8 @@ let plaid = require('plaid'),
    mongoo = require("./mongoose.js"),
    plaidClient = {},
    app = express(),
-   User = require("./user.model.js"),
-   UserCtr = require("./user.controller.js"),
+   User = require("./models/user.model.js"),
+   userCtrl = require("./controllers/user.controller.js"),
    secrets = require("./secrets.js"),
    db = mongoo.db()
 
@@ -17,7 +17,6 @@ db.connection.once('open', ()=>{
   console.log('Db is connected')
 })
 
-console.log(secrets.secrets.client_id, secrets.secrets.secret)
 //
 // let bank= {
 //   type: 'amex'
@@ -27,9 +26,7 @@ console.log(secrets.secrets.client_id, secrets.secrets.secret)
 //   secret: 'test_secret',
 //   access_token: 'test_' + bank.type
 // }
-let plaidTestUser = {
-
-}
+let plaidTestUser = {}
 if(environment === 'test'){
    plaidClient = new plaid.Client("test_id", "test_secret", plaid_env);
 }
@@ -111,10 +108,14 @@ app
      console.log("Hit the endpoint...")
      User.findById(req.params.id).exec((err, res)=>{
        console.log("about to plaid..", req.params.id);
-       plaidClient.getConnectUser(res.access_token, {"pending":true}, (err, res2)=>{
-         console.log(res2);
-         response.json(res2);
-       })
+       if(err){
+         response.json('What are you doing?')
+       } else {
+         plaidClient.getConnectUser(res.access_token, {"pending":true}, (err, res2)=>{
+           console.log(res2);
+           response.json(res2);
+         })
+       }
      })
    })
    .post('/user/', (req, response)=>{
@@ -122,7 +123,9 @@ app
    })
    .post('/webhook', (req, response)=>{
      console.log('WEBHOOK ACTIVATED')
-     console.log('This is jareds data', req)
+     console.log(Date(Date.now()))
+     console.log('This is jared or georges data', req)
+     response.status(200).json({ title: 'JSON OBJECT', timestamp: Date(Date.now())})
    })
   //       plaidClient.getAuthUser(access_token, (err, res)=> {
   //         if (err != null) {
