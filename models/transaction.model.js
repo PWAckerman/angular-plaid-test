@@ -6,6 +6,7 @@ let transactionSchema = new mongoose.Schema({
   user: {type: String, ref: 'User'},
   account: {type: String, ref: 'Account'},
   amount: Number,
+  plaid_id: String,
   posted: {type: Date},
   created: {type: Date, default: Date.now},
   category: {type: String, ref: 'PlaidCategory'},

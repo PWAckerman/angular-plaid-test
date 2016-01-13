@@ -9,6 +9,7 @@ let plaid = require('plaid'),
    plaidClient = {},
    app = express(),
    User = require("./models/user.model.js"),
+   Transaction = require("./models/transaction.model.js"),
    userCtrl = require("./controllers/user.controller.js"),
    secrets = require("./secrets.js"),
    db = mongoo.db()
@@ -16,7 +17,9 @@ let plaid = require('plaid'),
 db.connection.once('open', ()=>{
   console.log('Db is connected')
 })
-
+console.log(
+  plaid.environments
+)
 //
 // let bank= {
 //   type: 'amex'
@@ -111,20 +114,78 @@ app
        if(err){
          response.json('What are you doing?')
        } else {
-         plaidClient.getConnectUser(res.access_token, {"pending":true}, (err, res2)=>{
-           console.log(res2);
-           response.json(res2);
-         })
+         plaidClient.getConnectUser(res.access_token, { "pending":true, "gte": "2016-01-11T15:56:46-06:00" }, (err, res2)=>{
+          response.json(res2)
+
+          //  let flag = false;
+          //  let plaidtrans = res2.transactions.map(function(transaction){
+          //    return transaction._id
+          //  })
+          //  console.log(plaidtrans)
+          //  Transaction.find({plaid_id: {$in: plaidtrans}}).count((err, count) => {
+          //    console.log(err)
+          //       console.log('count', count)
+          //     })
+
+
+          //  for(var i = 0; i < res2.transactions.length; i++){
+          //    let transaction = res2.transactions[i]
+          //    let breaker = false;
+          //    Transaction.find({plaid_id: transaction._id}).exec().then(
+          //      (err, doc) => {
+          //        console.log(doc.length)
+          //        if(doc.length === 0){
+          //          console.log('New Transaction!')
+          //          let newTransaction = new Transaction({
+          //            user: req.params.id,
+          //            account: transaction._account,
+          //            amount: transaction.amount,
+          //            plaid_id: transaction._id,
+          //            posted: transaction.date
+          //          })
+          //          newTransaction.save((err, doc)=>{
+          //            err ? console.log(err) : breaker = false;
+          //          })
+          //        } else if(doc.length > 0) {
+          //          console.log('Flipping the breaker')
+          //          breaker = true;
+          //          console.log('BREAKER', breaker)
+          //        }
+          //        console.log('CONDITIONAL END', '.then END')
+          //    })//end of .then
+          //    console.log("end of for loop")
+          //  }//end of for loop
+
+           })
+          //  response.json(res2.transactions);
        }
      })
    })
    .post('/user/', (req, response)=>{
 
    })
+   .patch('/user/webhook/:id', (req, response)=>{
+     User
+      .findById(req.params.id)
+        .exec((err, doc)=>{
+           console.log("about to plaid..", req.params.id);
+           if(err){
+             response.json('What are you doing?')
+           } else {
+             plaidClient.patchConnectUser(doc.access_token, {}, {
+               webhook: 'http://9b7aeccc.ngrok.io/webhook',
+              }, function(err, mfaResponse, respo) {
+               response.json(respo);
+              })
+           }
+         })
+       })
    .post('/webhook', (req, response)=>{
      console.log('WEBHOOK ACTIVATED')
+     console.log(req)
      console.log(Date(Date.now()))
-     console.log('This is jared or georges data', req)
+     req.body.access_token;
+     req.body.total_transactions;
      response.status(200).json({ title: 'JSON OBJECT', timestamp: Date(Date.now())})
    })
   //       plaidClient.getAuthUser(access_token, (err, res)=> {
