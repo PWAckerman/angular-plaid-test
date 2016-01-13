@@ -4,12 +4,12 @@ let mongoose = require('mongoose'),
 
 let transactionSchema = new mongoose.Schema({
   user: {type: String, ref: 'User'},
-  account: {type: String, ref: 'Account'},
+  account: String,
   amount: Number,
   plaid_id: String,
   posted: {type: Date},
   created: {type: Date, default: Date.now},
-  category: {type: String, ref: 'PlaidCategory'},
+  category: String,
   tagged: {type: Boolean, default: false}
 })
 
