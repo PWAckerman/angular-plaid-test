@@ -107,6 +107,11 @@ app
         )
     }}
   )})
+  .get('/users/all', (req, response)=>{
+    User.find((err, res)=>{
+      response.json(res)
+    })
+  })
    .get('/plaidTransactions/:id', (req, response)=>{
      console.log("Hit the endpoint...")
      User.findById(req.params.id).exec((err, res)=>{
