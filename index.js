@@ -1,19 +1,23 @@
 'use strict';
 let plaid = require('plaid'),
   express = require('express'),
-  plaid_env = plaid.environments.tartan,
-  plaid_config = require('./secrets'),
   bodyParser = require('body-parser'),
   environment = "development",
   mongoo = require("./mongoose.js"),
   plaidClient = {},
-  app = express(),
+
+  //models controllers etc.
+  Subbudget = require('./models/subbudget.model'),
   User = require("./models/user.model.js"),
   Budget = require("./models/budget.model.js"),
   SubBudget = require("./models/subbudget.model.js"),
   Transaction = require("./models/transaction.model.js"),
   userCtrl = require("./controllers/user.server.controller.js"),
   secrets = require("./secrets.js"),
+
+  // configs and application
+  plaid_env = plaid.environments.tartan,
+  app = express(),
   db = mongoo.db()
 
 db.connection.once('open', () => {
@@ -29,6 +33,7 @@ if (environment === 'development') {
 }
 
 
+// endpoint for adding banks via plaid
 app
   .use(bodyParser.json())
   .use(express.static(__dirname))
@@ -48,7 +53,11 @@ app
         user.save().then(
           (err, res) => {
             console.log(err)
+<<<<<<< HEAD
             res.json(response)
+=======
+            res.json(response);
+>>>>>>> master
           }
         )
       }
@@ -56,6 +65,7 @@ app
   })
 
 // break out into user routes/controllers
+<<<<<<< HEAD
   .get('/users/all', (req, response) => {
     User.find((err, res) => {
       response.json(res)
@@ -65,6 +75,18 @@ app
     return userCtrl.populateUser(req, response);
   })
   .get('/plaidTransactions/:id', (req, response) => {
+=======
+// grab all users from database 
+.get('/users/all', (req, response) => {
+  User.find((err, res) => {
+    response.json(res)
+  })
+})
+
+// 
+// 
+.get('/plaidTransactions/:id', (req, response) => {
+>>>>>>> master
     console.log("Hit the endpoint...")
     User.findById(req.params.id).exec((err, res) => {
       console.log("about to plaid..", req.params.id);
@@ -129,6 +151,116 @@ app
   })
 
 
+// transaction endpoints
+
+// get all transactions for particular user
+app.get('/api/transactions/user/:id', function (req, res) {
+  Transaction.find({
+    user: req.params.id
+  }).exec().then(function (transactions) {
+    res.status(200).send(transactions);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
+// get a specific transaction based off of transaction id
+app.get('/api/transactions/:id', function (req, res) {
+  Transaction.find({
+    _id: req.params.id
+  }).exec().then(function (transaction) {
+    res.status(200).send(transaction);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
+// edit a specific transaction and then return that updated transaction via new: true
+app.patch('/api/transactions/:id', function (req, res) {
+  console.log(req.body);
+  Transaction.findByIdAndUpdate(req.params.id, req.body, {
+    new: true
+  }).exec().then(function (transaction) {
+    res.status(201).send(transaction);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
+// delete a specific transaction and then return an empty object on success
+app.delete('/api/transactions/:id', function (req, res) {
+  Transaction.remove({
+    _id: req.params.id
+  }).exec().then(function (transaction) {
+    res.status(204).send(transaction);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
+// todo: find untagged untransactions by userID
+  
+// get untagged transactions specific to user
+app.get('/api/transactions/untagged/:userId', function (req, res) {
+  Transaction.find({user: req.params.userId, tagged: false}).exec().then(function(transactions) {
+    res.status(200).send(transactions);
+  }).catch(function(err) {
+    res.status(500).send(err);
+  });
+})
+
+// subbudget "bucket" endpoints
+
+// get a specific subbudget based off of id, these are tied to a user
+app.get('/api/subbudget/:id', function (req, res) {
+  Subbudget.find({
+    _id: req.params.id
+  }).exec().then(function (subbudget) {
+    if (subbudget.length === 0) {
+      res.status(204).send(subbudget);
+    }
+    res.status(200).send(subbudget);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
+// edit a specific subbuget and return that newly edited subbuget
+app.patch('/api/subbudget/:id', function (req, res) {
+  Subbudget.findByIdAndUpdate(req.params.id, req.body, {
+    new: true
+  }).exec().then(function (subbudget) {
+    res.status(201).send(subbudget);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
+// create a new subbudget specific to the user and users budget
+app.post('/api/subbudget', function (req, res) {
+  var subbudget = new Subbudget(req.body);
+  subbudget.save().then(function (subbudget) {
+    res.status(201).send(subbudget);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
+// delete a subbudget specific to the user and users budget 
+app.delete('/api/subbudget/:id', function(req, res) {
+  Subbudget.remove({
+    _id: req.params.id
+  }).exec().then(function (transaction) {
+    res.status(204).send(transaction);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
+<<<<<<< HEAD
+app.listen(3001, () => console.log('Listening on 3001'));
+=======
 
 
 app.listen(3001, () => console.log('Listening on 3001'));
+>>>>>>> master
