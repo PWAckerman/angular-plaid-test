@@ -21,10 +21,6 @@ let plaid = require('plaid'),
 
 
 
-db.connection.once('open', () => {
-  console.log('Db is connected')
-})
-
 
 
 
@@ -58,7 +54,7 @@ app
       }
   })
 
-  .post('/authenticate', function (req, response) {
+  .post('/authenticates', function (req, response) {
     var public_token = req.body.public_token;
     plaidClient.exchangeToken(public_token, (err, res) => {
       if (err) {
@@ -166,8 +162,8 @@ app
 
   passport.use('signup', new LocalStrategy({passReqToCallback : true},
     function(req, username, password, done) {
-      console.log('we got here');
-      findOrCreateUser = function(){
+      console.log(req.body);
+      // findOrCreateUser = function(){
         // find a user in Mongo with provided username
         User.findOne({'userName':username},function(err, user) {
           // In case of any error return
@@ -185,8 +181,8 @@ app
             // create the user
             var newUser = new User();
             // set the user's local credentials
-            newUser.username = username;
-            newUser.password = createHash(password);
+            newUser.userName = username;
+            newUser.userPassword = createHash(password);
 
             // save the user
             newUser.save(function(err) {
@@ -199,8 +195,8 @@ app
             });
           }
         });
-      };
-      process.nextTick(findOrCreateUser);
+      // };
+      // process.nextTick(findOrCreateUser);
     }
   ));
 
@@ -259,3 +255,8 @@ app
 // setTimeout(()=> console.log(plaidClient), 5000)
 
 app.listen(3001, () => console.log('Listening on 3001'));
+
+
+db.connection.once('open', () => {
+  console.log('Db is connected')
+})
