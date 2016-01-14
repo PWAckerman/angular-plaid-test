@@ -23,3 +23,14 @@ exports.addUser = (req, res)=>{
   })
   User.save(user)
 }
+
+exports.populateUser = (req, res)=>{
+  User.findById(req.params.id)
+    .deepPopulate(['budget', 'budget.subBudgets', 'budget.subbudgets.transactions'])
+    .exec()
+    .then((doc)=>{
+      res.json(doc)
+    }).catch((err)=>{
+      console.log(err)
+    })
+}

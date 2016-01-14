@@ -7,6 +7,7 @@ let subBudgetSchema = new mongoose.Schema({
   name: String,
   user: {type: String, ref: 'User'},
   allocated: Number,
+  category: String,
   created: {type: Date, default: Date.now},
   transactions: [{type: String, ref: 'Transaction'}]
 })

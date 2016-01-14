@@ -9,12 +9,12 @@ let plaid = require('plaid'),
   plaidClient = {},
   app = express(),
   User = require("./models/user.model.js"),
+  Budget = require("./models/budget.model.js"),
+  SubBudget = require("./models/subbudget.model.js"),
   Transaction = require("./models/transaction.model.js"),
-  userCtrl = require("./controllers/user.controller.js"),
+  userCtrl = require("./controllers/user.server.controller.js"),
   secrets = require("./secrets.js"),
   db = mongoo.db()
-
-
 
 db.connection.once('open', () => {
   console.log('Db is connected')
@@ -56,10 +56,13 @@ app
   })
 
 // break out into user routes/controllers
-.get('/users/all', (req, response) => {
+  .get('/users/all', (req, response) => {
     User.find((err, res) => {
       response.json(res)
     })
+  })
+  .get('/user/:id/populate', (req, response)=>{
+    return userCtrl.populateUser(req, response);
   })
   .get('/plaidTransactions/:id', (req, response) => {
     console.log("Hit the endpoint...")
@@ -68,9 +71,8 @@ app
       if (err) {
         response.json('What are you doing?')
       } else {
-        plaidClient.getConnectUser(res.access_token, {
-          "pending": true,
-          "gte": "2016-01-11T15:56:46-06:00"
+        plaidClient.getConnectUser(res.access_token[0], {
+          "pending": true
         }, (err, res2) => {
           response.json(res2)
         })
@@ -98,8 +100,26 @@ app
   })
   .post('/webhook', (req, response) => {
     console.log('WEBHOOK ACTIVATED')
-    console.log(req)
-    console.log(Date(Date.now()))
+    switch(req.body.code){
+      case "0":
+        console.log('INITIAL TRANSACTION PULL')
+        break;
+      case "1":
+        console.log('HISTORICAL TRANSACTION PULL')
+        break
+      case "2":
+        console.log('NORMAL TRANSACTION PULL')
+        break
+      case "3":
+        console.log('REMOVED TRANSACTION')
+        break
+      case "4":
+        console.log('WEBHOOK UPDATED')
+        break
+      default:
+        console.log('SOME SORT OF ERROR', req.body.code, req.body.message)
+        break
+    }
     req.body.access_token;
     req.body.total_transactions;
     response.status(200).json({

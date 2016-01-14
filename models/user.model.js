@@ -1,5 +1,6 @@
 'use strict';
-let mongoose = require('mongoose')
+let mongoose = require('mongoose'),
+  deepPopulate = require('mongoose-deep-populate')(mongoose)
 
 let userSchema = new mongoose.Schema({
   userName: String,
@@ -10,5 +11,7 @@ let userSchema = new mongoose.Schema({
   budget: {type: String, ref: 'Budget'},
   lastPull: Date
 })
+
+userSchema.plugin(deepPopulate)
 
 module.exports = mongoose.model('User', userSchema)
