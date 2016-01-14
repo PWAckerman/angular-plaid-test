@@ -1,17 +1,20 @@
 'use strict';
 let plaid = require('plaid'),
   express = require('express'),
-  plaid_env = plaid.environments.tartan,
-  plaid_config = require('./secrets'),
   bodyParser = require('body-parser'),
   environment = "development",
   mongoo = require("./mongoose.js"),
   plaidClient = {},
-  app = express(),
+
+  //models controllers etc.
   User = require("./models/user.model.js"),
   Transaction = require("./models/transaction.model.js"),
-  userCtrl = require("./controllers/user.controller.js"),
+  userCtrl = require("./controllers/user.server.controller.js"),
   secrets = require("./secrets.js"),
+
+  // configs and application
+  plaid_env = plaid.environments.tartan,
+  app = express(),
   db = mongoo.db()
 
 
@@ -29,6 +32,7 @@ if (environment === 'development') {
 }
 
 
+// endpoint for adding banks via plaid
 app
   .use(bodyParser.json())
   .use(express.static(__dirname))
@@ -48,15 +52,7 @@ app
         user.save().then(
           (err, res) => {
             console.log(err)
-            res.json(response)
-              // plaidClient.patchConnectUser(plaidTestUser.access_token, {}, {
-              //   webhook: 'http://www.pushbudget.com/api/incoming-webhook',
-              // }, function(err, mfaResponse, response) {
-              //   // The webhook URI should receive a code 4 "webhook acknowledged" webhook
-              //   console.log('HOOK ERR', err)
-              //   console.log('HOOK mfaResponse', mfaResponse)
-              //   console.log('HOOK response', response)
-              // });
+            res.json(response);
           }
         )
       }
@@ -64,12 +60,16 @@ app
   })
 
 // break out into user routes/controllers
+// grab all users from database 
 .get('/users/all', (req, response) => {
-    User.find((err, res) => {
-      response.json(res)
-    })
+  User.find((err, res) => {
+    response.json(res)
   })
-  .get('/plaidTransactions/:id', (req, response) => {
+})
+
+// 
+// 
+.get('/plaidTransactions/:id', (req, response) => {
     console.log("Hit the endpoint...")
     User.findById(req.params.id).exec((err, res) => {
       console.log("about to plaid..", req.params.id);
@@ -116,6 +116,53 @@ app
     })
   })
 
+
+// transaction endpoints
+
+// get all transactions for particular user
+app.get('/api/transactions/user/:id', function (req, res) {
+  Transaction.find({
+    user: req.params.id
+  }).exec().then(function (transactions) {
+    res.status(200).send(transactions);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
+// get a specific transaction based off of transaction id
+app.get('/api/transactions/:id', function (req, res) {
+  Transaction.find({
+    _id: req.params.id
+  }).exec().then(function (transaction) {
+    res.status(200).send(transaction);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
+// edit a specific transaction and then return that updated transaction via new: true
+app.patch('/api/transactions/:id', function (req, res) {
+  console.log(req.body);
+  Transaction.findByIdAndUpdate(req.params.id, req.body, {
+    new: true
+  }).exec().then(function (transaction) {
+    res.status(201).send(transaction);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
+// delete a specific transaction and then return an empty object on success
+app.delete('/api/transactions/:id', function (req, res) {
+  Transaction.remove({
+    _id: req.params.id
+  }).exec().then(function (transaction) {
+    res.status(204).send(transaction);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
 
 
 
