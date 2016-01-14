@@ -5,7 +5,8 @@ let mongoose = require('mongoose'),
 let budgetSchema = new mongoose.Schema({
   user: {type: String, ref: 'User'},
   name: String,
-  subBudgets: [{type: String, ref: 'SubBudget'}],
+  amount: Number,
+  subbudgets: [{type: String, ref: 'SubBudget'}],
   created: {type: Date, default: Date.now}
 })
 

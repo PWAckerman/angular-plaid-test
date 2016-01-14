@@ -9,6 +9,8 @@ let plaid = require('plaid'),
   //models controllers etc.
   Subbudget = require('./models/subbudget.model'),
   User = require("./models/user.model.js"),
+  Budget = require("./models/budget.model.js"),
+  SubBudget = require("./models/subbudget.model.js"),
   Transaction = require("./models/transaction.model.js"),
   userCtrl = require("./controllers/user.server.controller.js"),
   secrets = require("./secrets.js"),
@@ -17,8 +19,6 @@ let plaid = require('plaid'),
   plaid_env = plaid.environments.tartan,
   app = express(),
   db = mongoo.db()
-
-
 
 db.connection.once('open', () => {
   console.log('Db is connected')
@@ -53,7 +53,11 @@ app
         user.save().then(
           (err, res) => {
             console.log(err)
+<<<<<<< HEAD
+            res.json(response)
+=======
             res.json(response);
+>>>>>>> master
           }
         )
       }
@@ -61,6 +65,17 @@ app
   })
 
 // break out into user routes/controllers
+<<<<<<< HEAD
+  .get('/users/all', (req, response) => {
+    User.find((err, res) => {
+      response.json(res)
+    })
+  })
+  .get('/user/:id/populate', (req, response)=>{
+    return userCtrl.populateUser(req, response);
+  })
+  .get('/plaidTransactions/:id', (req, response) => {
+=======
 // grab all users from database 
 .get('/users/all', (req, response) => {
   User.find((err, res) => {
@@ -71,15 +86,15 @@ app
 // 
 // 
 .get('/plaidTransactions/:id', (req, response) => {
+>>>>>>> master
     console.log("Hit the endpoint...")
     User.findById(req.params.id).exec((err, res) => {
       console.log("about to plaid..", req.params.id);
       if (err) {
         response.json('What are you doing?')
       } else {
-        plaidClient.getConnectUser(res.access_token, {
-          "pending": true,
-          "gte": "2016-01-11T15:56:46-06:00"
+        plaidClient.getConnectUser(res.access_token[0], {
+          "pending": true
         }, (err, res2) => {
           response.json(res2)
         })
@@ -107,8 +122,26 @@ app
   })
   .post('/webhook', (req, response) => {
     console.log('WEBHOOK ACTIVATED')
-    console.log(req)
-    console.log(Date(Date.now()))
+    switch(req.body.code){
+      case "0":
+        console.log('INITIAL TRANSACTION PULL')
+        break;
+      case "1":
+        console.log('HISTORICAL TRANSACTION PULL')
+        break
+      case "2":
+        console.log('NORMAL TRANSACTION PULL')
+        break
+      case "3":
+        console.log('REMOVED TRANSACTION')
+        break
+      case "4":
+        console.log('WEBHOOK UPDATED')
+        break
+      default:
+        console.log('SOME SORT OF ERROR', req.body.code, req.body.message)
+        break
+    }
     req.body.access_token;
     req.body.total_transactions;
     response.status(200).json({
@@ -224,6 +257,10 @@ app.delete('/api/subbudget/:id', function(req, res) {
   });
 });
 
+<<<<<<< HEAD
+app.listen(3001, () => console.log('Listening on 3001'));
+=======
 
 
 app.listen(3001, () => console.log('Listening on 3001'));
+>>>>>>> master
