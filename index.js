@@ -49,14 +49,6 @@ app
           (err, res) => {
             console.log(err)
             res.json(response)
-              // plaidClient.patchConnectUser(plaidTestUser.access_token, {}, {
-              //   webhook: 'http://www.pushbudget.com/api/incoming-webhook',
-              // }, function(err, mfaResponse, response) {
-              //   // The webhook URI should receive a code 4 "webhook acknowledged" webhook
-              //   console.log('HOOK ERR', err)
-              //   console.log('HOOK mfaResponse', mfaResponse)
-              //   console.log('HOOK response', response)
-              // });
           }
         )
       }
@@ -118,8 +110,5 @@ app
 
 
 
-
-
-// setTimeout(()=> console.log(plaidClient), 5000)
 
 app.listen(3001, () => console.log('Listening on 3001'));
