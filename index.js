@@ -1,7 +1,9 @@
 'use strict';
+//libraries and plugins
 let plaid = require('plaid'),
   express = require('express'),
   bodyParser = require('body-parser'),
+  cors = require('cors'),
   environment = "development",
   mongoo = require("./mongoose.js"),
   plaidClient = {},
@@ -11,6 +13,8 @@ let plaid = require('plaid'),
   User = require("./models/user.model.js"),
   Budget = require("./models/budget.model.js"),
   SubBudget = require("./models/subbudget.model.js"),
+  Account = require("./models/account.model.js"),
+  Webhook = require("./models/webhook.model.js"),
   Transaction = require("./models/transaction.model.js"),
   userCtrl = require("./controllers/user.server.controller.js"),
   secrets = require("./secrets.js"),
@@ -35,6 +39,7 @@ if (environment === 'development') {
 
 // endpoint for adding banks via plaid
 app
+  .use(cors())
   .use(bodyParser.json())
   .use(express.static(__dirname))
   .post('/authenticate', function (req, response) {
@@ -115,32 +120,138 @@ app
   })
   .post('/webhook', (req, response) => {
     console.log('WEBHOOK ACTIVATED')
+    var webhook = new Webhook({
+      total_transactions: req.body.total_transactions || 0,
+      code: req.body.code,
+      message: req.body.message,
+      resolve: req.body.resolve || 'Not an error',
+      access_token: req.body.access_token || '0',
+    })
+    webhook.save()
     switch(req.body.code){
-      case "0":
+      case 0:
         console.log('INITIAL TRANSACTION PULL')
+        User.find({access_token: req.body.access_token}).exec((err, res) => {
+          console.log(res)
+          console.log("about to plaid..", req.body.access_token);
+          if (err) {
+            response.json('What are you doing?')
+          } else {
+            plaidClient.getConnectUser(req.body.access_token, {
+              "pending": true
+            }, (err, res2) => {
+
+              res2.accounts.map((account)=>{
+
+                let newAccount = new Account({
+                  user: res[0]._id.toString(),
+                  institution_type: account.institution_type,
+                  institution: 'PLACEHOLDER',
+                  name: account.meta.name,
+                  type: account.type,
+                  subtype: account.subtype || '',
+                })
+                console.log(account)
+                // newAccount.save()
+              })
+              res2.transactions.map((transaction)=>{
+                let cat = ''
+                if(transaction.category){
+                  cat = transaction.category
+                }
+                let newTrans = new Transaction({
+                  user: res[0]._id.toString(),
+                  name: transaction.name,
+                  account: transaction._account,
+                  amount: transaction.amount,
+                  plaid_id: transaction._id,
+                  posted: transaction.date,
+                  category: cat
+                })
+                console.log(newTrans)
+                // newTrans.save()
+              })
+              User.findByIdAndUpdate(res[0]._id, {lastPull: Date.now()}, {new: true}).exec().then(
+                (doc) => {
+                  console.log(doc)
+                  response.json({
+                    message: "Initial Transaction Pull Completed"
+                  })
+                }
+              ).catch(
+                (err) => console.log(err)
+              )
+            })
+          }
+        })
         break;
-      case "1":
+      case 1:
         console.log('HISTORICAL TRANSACTION PULL')
         break
-      case "2":
+      case 2:
         console.log('NORMAL TRANSACTION PULL')
+        User.find({access_token: req.body.access_token}).exec((err, res) => {
+          plaidClient.getConnectUser(req.body.access_token, {
+            "pending": true, "gte": res[0].lastPull
+          }, (err, res2) => {
+            console.log(res[0].lastPull)
+            if(res2.transactions.length > 0){
+              res2.transactions.map((transaction)=>{
+
+                let cat = ''
+                if(transaction.category){
+                  cat = transaction.category
+                }
+                let newTrans = new Transaction({
+                  user: res[0]._id.toString(),
+                  name: transaction.name,
+                  account: transaction._account,
+                  amount: transaction.amount,
+                  plaid_id: transaction._id,
+                  posted: transaction.date,
+                  category: cat
+                })
+                console.log(newTrans)
+                // newTrans.save()
+
+              })
+              User.findByIdAndUpdate(res[0]._id, {lastPull: Date.now()}, {new: true}).exec().then(
+                (doc) => {
+                  console.log(doc)
+                  response.json({
+                    message: `${res2.transactions.length} new transactions...`
+                  })
+              })
+            } else {
+              User.findByIdAndUpdate(res[0]._id, {lastPull: Date.now()}, {new: true}).exec().then(
+                (doc) => {
+                  console.log(doc)
+                  response.json({
+                    message: "No new transactions..."
+                  })
+              })
+            }
+          })
+        })
         break
-      case "3":
+      case 3:
         console.log('REMOVED TRANSACTION')
+        User.find({access_token: req.body.access_token}).exec((err, res) => {
+          req.body.removed_transactions.map((transaction_id)=>{
+            Transaction.remove({plaid_id: transaction_id}).exec().then(function(transaction){
+              console.log(transaction);
+            })
+          })
+        reponse.json({"message":"We deleted what you told us to."})
+        })
         break
-      case "4":
+      case 4:
         console.log('WEBHOOK UPDATED')
         break
       default:
         console.log('SOME SORT OF ERROR', req.body.code, req.body.message)
         break
     }
-    req.body.access_token;
-    req.body.total_transactions;
-    response.status(200).json({
-      title: 'JSON OBJECT',
-      timestamp: Date(Date.now())
-    })
   })
 
 
