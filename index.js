@@ -144,7 +144,7 @@ app
 
 
   var isValidPassword = function(user, password){
-    return bCrypt.compareSync(password, user.password);
+    return bCrypt.compareSync(password, user.userPassword);
   }
   var createHash = function(password){
    return bCrypt.hashSync(password, bCrypt.genSaltSync(10), null);
@@ -202,7 +202,7 @@ app
 
   passport.use('login', new LocalStrategy({passReqToCallback : true},
     function(req, username, password, done) {
-      console.log('we out here');
+      console.log('username', req.body);
       // check in mongo if a user with username exists or not
       User.findOne({ 'userName' :  username },
         function(err, user) {
@@ -223,6 +223,7 @@ app
             return done(null, false,
                 req.flash('message', 'Invalid Password'));
           }
+          console.log('login successful');
           // User and password both match, return user from
           // done method which will be treated like success
           return done(null, user);
