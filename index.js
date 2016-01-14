@@ -143,12 +143,22 @@ app.get('/api/transactions/:id', function (req, res) {
 
 // edit a specific transaction and then return that updated transaction via new: true
 app.patch('/api/transactions/:id', function (req, res) {
-  Transaction.findOneAndUpdate({
-    _id: req.params.id
-  }, req.body, {
+  console.log(req.body);
+  Transaction.findByIdAndUpdate(req.params.id, req.body, {
     new: true
   }).exec().then(function (transaction) {
     res.status(201).send(transaction);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
+// delete a specific transaction and then return an empty object on success
+app.delete('/api/transactions/:id', function (req, res) {
+  Transaction.remove({
+    _id: req.params.id
+  }).exec().then(function (transaction) {
+    res.status(204).send(transaction);
   }).catch(function (err) {
     res.status(500).send(err);
   });
