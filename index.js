@@ -14,25 +14,12 @@ let plaid = require('plaid'),
   secrets = require("./secrets.js"),
   db = mongoo.db()
 
-console.log(mongoo.db());
-console.log('db', db);
-console.log('mongoo', mongoo);
+
 
 db.connection.once('open', () => {
   console.log('Db is connected')
 })
-console.log(
-    plaid.environments
-  )
-  //
-  // let bank= {
-  //   type: 'amex'
-  // }
-  // let plaidTestApi = {
-  //   id: 'test_id',
-  //   secret: 'test_secret',
-  //   access_token: 'test_' + bank.type
-  // }
+
 let plaidTestUser = {}
 if (environment === 'test') {
   plaidClient = new plaid.Client("test_id", "test_secret", plaid_env);
@@ -41,43 +28,6 @@ if (environment === 'development') {
   plaidClient = new plaid.Client(secrets.secrets.client_id, secrets.secrets.secret, plaid_env);
 }
 
-
-// plaid.getCategories(plaid_env, (err, response) => {
-//   console.log(response)
-// }
-
-// plaidClient.getConnectUser(plaidTestApi.access_token, {}, (err, response)=>{
-//   // console.log(response.accounts);
-//   // console.log(response.transactions);
-//   // delete response.accounts;
-//   // delete response.transactions;
-//   // console.log(response)
-// })
-// plaidClient.addAuthUser('bofa', {
-//   username: 'plaid_test',
-//   password: 'plaid_good',
-// }, function(err, mfaResponse, response) {
-//   if (err != null) {
-//     // Bad request - invalid credentials, account locked, etc.
-//     console.error(err);
-//   } else if (mfaResponse != null) {
-//     console.log('MFARESPONSE', mfaResponse)
-//     console.log('RESPONSE', response)
-//     plaidClient.stepAuthUser(mfaResponse.access_token, 'too', {},
-//     function(err, mfaRes, response) {
-//       if(err){
-//         console.log(err);
-//       }else{
-//         console.log('MFARES', mfaRes);
-//         console.log('NEXT RESPONSE', response);
-//         console.log('ACCOUNTS', response.accounts);
-//       }
-//     });
-//   } else {
-//     // No MFA required - response body has accounts
-//     console.log(response.accounts);
-//   }
-// });
 
 app
   .use(bodyParser.json())
@@ -112,7 +62,9 @@ app
       }
     })
   })
-  .get('/users/all', (req, response) => {
+
+// break out into user routes/controllers
+.get('/users/all', (req, response) => {
     User.find((err, res) => {
       response.json(res)
     })
@@ -125,52 +77,11 @@ app
         response.json('What are you doing?')
       } else {
         plaidClient.getConnectUser(res.access_token, {
-            "pending": true,
-            "gte": "2016-01-11T15:56:46-06:00"
-          }, (err, res2) => {
-            response.json(res2)
-
-            //  let flag = false;
-            //  let plaidtrans = res2.transactions.map(function(transaction){
-            //    return transaction._id
-            //  })
-            //  console.log(plaidtrans)
-            //  Transaction.find({plaid_id: {$in: plaidtrans}}).count((err, count) => {
-            //    console.log(err)
-            //       console.log('count', count)
-            //     })
-
-
-            //  for(var i = 0; i < res2.transactions.length; i++){
-            //    let transaction = res2.transactions[i]
-            //    let breaker = false;
-            //    Transaction.find({plaid_id: transaction._id}).exec().then(
-            //      (err, doc) => {
-            //        console.log(doc.length)
-            //        if(doc.length === 0){
-            //          console.log('New Transaction!')
-            //          let newTransaction = new Transaction({
-            //            user: req.params.id,
-            //            account: transaction._account,
-            //            amount: transaction.amount,
-            //            plaid_id: transaction._id,
-            //            posted: transaction.date
-            //          })
-            //          newTransaction.save((err, doc)=>{
-            //            err ? console.log(err) : breaker = false;
-            //          })
-            //        } else if(doc.length > 0) {
-            //          console.log('Flipping the breaker')
-            //          breaker = true;
-            //          console.log('BREAKER', breaker)
-            //        }
-            //        console.log('CONDITIONAL END', '.then END')
-            //    })//end of .then
-            //    console.log("end of for loop")
-            //  }//end of for loop
-
-          })
-          //  response.json(res2.transactions);
+          "pending": true,
+          "gte": "2016-01-11T15:56:46-06:00"
+        }, (err, res2) => {
+          response.json(res2)
+        })
       }
     })
   })
@@ -204,44 +115,7 @@ app
       timestamp: Date(Date.now())
     })
   })
-  //       plaidClient.getAuthUser(access_token, (err, res)=> {
-  //         if (err != null) {
-  //           console.log(err)
-  //         } else {
-  //           var accounts = res;
-  //           plaidClient.getConnectUser(access_token, (err, res)=> {
-  //             if(err){
-  //               response.json(accounts.accounts)
-  //             } else {
-  //               accounts.transactions = res.transactions;
-  //               plaidClient.getInfoUser(access_token, (err, res)=>{
-  //                 if(err){
-  //                   response.json(accounts)
-  //                 }else{
-  //                   accounts.userInfo = res
-  //                   plaidClient.getBalance(access_token, (err, res)=>{
-  //                     if(err){
-  //                       response.json(accounts)
-  //                     }else{
-  //                       accounts.balance = res;
-  //                       response.json(accounts)
-  //                     }
-  //                   })
-  //
-  //                 }
-  //               });
-  //
-  //             }
-  //
-  //
-  //           });
-  //
-  //
-  //         }
-  //       });
-  //     }
-  //   });
-  // });
+
 
 
 
