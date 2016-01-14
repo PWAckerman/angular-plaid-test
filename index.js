@@ -53,11 +53,8 @@ app
         user.save().then(
           (err, res) => {
             console.log(err)
-<<<<<<< HEAD
             res.json(response)
-=======
-            res.json(response);
->>>>>>> master
+
           }
         )
       }
@@ -65,7 +62,6 @@ app
   })
 
 // break out into user routes/controllers
-<<<<<<< HEAD
   .get('/users/all', (req, response) => {
     User.find((err, res) => {
       response.json(res)
@@ -74,19 +70,16 @@ app
   .get('/user/:id/populate', (req, response)=>{
     return userCtrl.populateUser(req, response);
   })
-  .get('/plaidTransactions/:id', (req, response) => {
-=======
-// grab all users from database 
+// grab all users from database
 .get('/users/all', (req, response) => {
   User.find((err, res) => {
     response.json(res)
   })
 })
 
-// 
-// 
+//
+//
 .get('/plaidTransactions/:id', (req, response) => {
->>>>>>> master
     console.log("Hit the endpoint...")
     User.findById(req.params.id).exec((err, res) => {
       console.log("about to plaid..", req.params.id);
@@ -199,7 +192,7 @@ app.delete('/api/transactions/:id', function (req, res) {
 });
 
 // todo: find untagged untransactions by userID
-  
+
 // get untagged transactions specific to user
 app.get('/api/transactions/untagged/:userId', function (req, res) {
   Transaction.find({user: req.params.userId, tagged: false}).exec().then(function(transactions) {
@@ -246,7 +239,7 @@ app.post('/api/subbudget', function (req, res) {
   });
 });
 
-// delete a subbudget specific to the user and users budget 
+// delete a subbudget specific to the user and users budget
 app.delete('/api/subbudget/:id', function(req, res) {
   Subbudget.remove({
     _id: req.params.id
@@ -257,10 +250,5 @@ app.delete('/api/subbudget/:id', function(req, res) {
   });
 });
 
-<<<<<<< HEAD
-app.listen(3001, () => console.log('Listening on 3001'));
-=======
-
 
 app.listen(3001, () => console.log('Listening on 3001'));
->>>>>>> master
