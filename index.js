@@ -7,6 +7,7 @@ let plaid = require('plaid'),
   plaidClient = {},
 
   //models controllers etc.
+  Subbudget = require('./models/subbudget.model'),
   User = require("./models/user.model.js"),
   Transaction = require("./models/transaction.model.js"),
   userCtrl = require("./controllers/user.server.controller.js"),
@@ -164,9 +165,65 @@ app.delete('/api/transactions/:id', function (req, res) {
   });
 });
 
+// todo: find untagged untransactions by userID
+  
+// get untagged transactions specific to user
+app.get('/api/transactions/untagged/:userId', function (req, res) {
+  Transaction.find({user: req.params.userId, tagged: false}).exec().then(function(transactions) {
+    res.status(200).send(transactions);
+  }).catch(function(err) {
+    res.status(500).send(err);
+  });
+})
+
+// subbudget "bucket" endpoints
+
+// get a specific subbudget based off of id, these are tied to a user
+app.get('/api/subbudget/:id', function (req, res) {
+  Subbudget.find({
+    _id: req.params.id
+  }).exec().then(function (subbudget) {
+    if (subbudget.length === 0) {
+      res.status(204).send(subbudget);
+    }
+    res.status(200).send(subbudget);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
+// edit a specific subbuget and return that newly edited subbuget
+app.patch('/api/subbudget/:id', function (req, res) {
+  Subbudget.findByIdAndUpdate(req.params.id, req.body, {
+    new: true
+  }).exec().then(function (subbudget) {
+    res.status(201).send(subbudget);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
+// create a new subbudget specific to the user and users budget
+app.post('/api/subbudget', function (req, res) {
+  var subbudget = new Subbudget(req.body);
+  subbudget.save().then(function (subbudget) {
+    res.status(201).send(subbudget);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
+// delete a subbudget specific to the user and users budget 
+app.delete('/api/subbudget/:id', function(req, res) {
+  Subbudget.remove({
+    _id: req.params.id
+  }).exec().then(function (transaction) {
+    res.status(204).send(transaction);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
 
 
-
-// setTimeout(()=> console.log(plaidClient), 5000)
 
 app.listen(3001, () => console.log('Listening on 3001'));
