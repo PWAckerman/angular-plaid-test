@@ -1,6 +1,7 @@
 'use strict';
 //libraries and plugins
 let plaid = require('plaid'),
+  gcm = require('node-gcm'),
   express = require('express'),
   bodyParser = require('body-parser'),
   cors = require('cors'),
@@ -16,6 +17,7 @@ let plaid = require('plaid'),
   Account = require("./models/account.model.js"),
   Webhook = require("./models/webhook.model.js"),
   Transaction = require("./models/transaction.model.js"),
+  Tokens = require("./models/tokens.model.js"),
   userCtrl = require("./controllers/user.server.controller.js"),
   secrets = require("./secrets.js"),
 
@@ -35,33 +37,63 @@ if (environment === 'test') {
 if (environment === 'development') {
   plaidClient = new plaid.Client(secrets.secrets.client_id, secrets.secrets.secret, plaid_env);
 }
+//GCM Push Notification Test
+let pushyMessage = new gcm.Message();
+pushyMessage.addNotification({
+  title: 'Alert!!!',
+  body: 'You just got served.',
+  icon: 'ic_launcher'
+})
 
-
+let sender = new gcm.Sender(secrets.secrets.gcm_key)
 // endpoint for adding banks via plaid
 app
   .use(cors())
   .use(bodyParser.json())
   .use(express.static(__dirname))
-  .post('/authenticate', function (req, response) {
-    var public_token = req.body.public_token;
+  //GCM Push Notification Test endpoint
+  .post('/gcm', (req, response) => {
+    sender.sendNoRetry(pushyMessage, {registrationTokens: ['registrationtoken']}, (err, res)=>{
+      (err) ? console.error(err) : console.log(response)
+    })
+  })
+  //GCM Push Registration Webhook
+  .post('/gcmhook', (req, response) =>{
+    if(req.body._push.android_tokens && req.body.unregister === false){
+
+      response.status(200)
+    } else if(req.body._push.ios_tokens && req.body.unregister === false){
+
+      response.status(200)
+    } else if(req.body._push.android_tokens && req.body.unregister === true){
+
+      response.status(200)
+    } else if(req.body._push.ios_tokens && req.body.unregister === true){
+
+      response.status(200)
+    } else if(req.body.token_invalid) {
+
+      response.status(200)
+    } else {
+      console.log("What are you trying to pull, google?")
+      response.status(204)
+    }
+  })
+  //Plaid-facing authentication endpoint
+  .post('/authenticate/:userid', (req, response) => {
+    let public_token = req.body.public_token;
+    let tokens = new Tokens({
+      user: req.params.userid,
+      public_token: public_token,
+      institution_type: ''
+    })
     plaidClient.exchangeToken(public_token, (err, res) => {
       if (err) {
         console.log(err)
       } else {
-        plaidTestUser.access_token = res.access_token;
-        let user = new User({
-          userName: req.body.userName,
-          userPassword: req.body.userPassword,
-          access_token: plaidTestUser.access_token,
-          institutions: plaidTestUser.access_token.split('_')[1]
-        })
-        user.save().then(
-          (err, res) => {
-            console.log(err)
-            res.json(response)
-
-          }
-        )
+        console.log('RES', res)
+        tokens.access_token = res.access_token;
+        tokens.save()
       }
     })
   })
@@ -79,6 +111,11 @@ app
 .get('/users/all', (req, response) => {
   User.find((err, res) => {
     response.json(res)
+  })
+})
+.patch('/user/:id', (req, response)=>{
+  User.findByIdAndUpdate(req.params.id, req.body, {new: true}).exec((err, doc)=>{
+    response.json(doc)
   })
 })
 
@@ -131,58 +168,46 @@ app
     switch(req.body.code){
       case 0:
         console.log('INITIAL TRANSACTION PULL')
-        User.find({access_token: req.body.access_token}).exec((err, res) => {
-          console.log(res)
-          console.log("about to plaid..", req.body.access_token);
-          if (err) {
-            response.json('What are you doing?')
-          } else {
-            plaidClient.getConnectUser(req.body.access_token, {
-              "pending": true
-            }, (err, res2) => {
-
-              res2.accounts.map((account)=>{
-
-                let newAccount = new Account({
-                  user: res[0]._id.toString(),
-                  institution_type: account.institution_type,
-                  institution: 'PLACEHOLDER',
-                  name: account.meta.name,
-                  type: account.type,
-                  subtype: account.subtype || '',
-                })
-                console.log(account)
-                // newAccount.save()
-              })
-              res2.transactions.map((transaction)=>{
-                let cat = ''
-                if(transaction.category){
-                  cat = transaction.category
-                }
-                let newTrans = new Transaction({
-                  user: res[0]._id.toString(),
-                  name: transaction.name,
-                  account: transaction._account,
-                  amount: transaction.amount,
-                  plaid_id: transaction._id,
-                  posted: transaction.date,
-                  category: cat
-                })
-                console.log(newTrans)
-                // newTrans.save()
-              })
-              User.findByIdAndUpdate(res[0]._id, {lastPull: Date.now()}, {new: true}).exec().then(
-                (doc) => {
-                  console.log(doc)
-                  response.json({
-                    message: "Initial Transaction Pull Completed"
-                  })
-                }
-              ).catch(
-                (err) => console.log(err)
-              )
+        let idToSearch = ''
+        Tokens.find({access_token: req.body.access_token}).exec((err, res)=>{
+          idToSearch = res[0].user
+          plaidClient.getConnectUser(req.body.access_token, {
+            "pending": true
+          }, (err, res2) => {
+            Tokens.findByIdAndUpdate(res[0]._id, {institution_type: res2.accounts[0].institution_type, lastPull: Date.now()}, {new: true}).exec((err,res)=>{
+              console.log(res)
             })
-          }
+            res2.accounts.map((account)=>{
+              let newAccount = new Account({
+                user: res[0].user,
+                institution_type: account.institution_type,
+                institution: 'PLACEHOLDER',
+                name: account.meta.name,
+                type: account.type,
+                subtype: account.subtype || '',
+              })
+
+              console.log(account)
+              // newAccount.save()
+            })
+            res2.transactions.map((transaction)=>{
+              let cat = ''
+              if(transaction.category){
+                cat = transaction.category
+              }
+              let newTrans = new Transaction({
+                user: res[0]._id.toString(),
+                name: transaction.name,
+                account: transaction._account,
+                amount: transaction.amount,
+                plaid_id: transaction._id,
+                posted: transaction.date,
+                category: cat
+              })
+              console.log(newTrans)
+              // newTrans.save()
+            })
+          })
         })
         break;
       case 1:
@@ -190,20 +215,19 @@ app
         break
       case 2:
         console.log('NORMAL TRANSACTION PULL')
-        User.find({access_token: req.body.access_token}).exec((err, res) => {
+        Tokens.find({access_token: req.body.access_token}).exec((err, res) => {
           plaidClient.getConnectUser(req.body.access_token, {
             "pending": true, "gte": res[0].lastPull
           }, (err, res2) => {
             console.log(res[0].lastPull)
             if(res2.transactions.length > 0){
               res2.transactions.map((transaction)=>{
-
                 let cat = ''
                 if(transaction.category){
                   cat = transaction.category
                 }
                 let newTrans = new Transaction({
-                  user: res[0]._id.toString(),
+                  user: res[0]._id,
                   name: transaction.name,
                   account: transaction._account,
                   amount: transaction.amount,
@@ -215,7 +239,7 @@ app
                 // newTrans.save()
 
               })
-              User.findByIdAndUpdate(res[0]._id, {lastPull: Date.now()}, {new: true}).exec().then(
+              Tokens.findByIdAndUpdate(res[0]._id, {lastPull: Date.now()}, {new: true}).exec().then(
                 (doc) => {
                   console.log(doc)
                   response.json({
@@ -223,11 +247,11 @@ app
                   })
               })
             } else {
-              User.findByIdAndUpdate(res[0]._id, {lastPull: Date.now()}, {new: true}).exec().then(
+              Tokens.findByIdAndUpdate(res[0]._id, {lastPull: Date.now()}, {new: true}).exec().then(
                 (doc) => {
                   console.log(doc)
                   response.json({
-                    message: "No new transactions..."
+                    message: `No new transactions, Plaid. What are you thinking...`
                   })
               })
             }
@@ -236,13 +260,11 @@ app
         break
       case 3:
         console.log('REMOVED TRANSACTION')
-        User.find({access_token: req.body.access_token}).exec((err, res) => {
           req.body.removed_transactions.map((transaction_id)=>{
             Transaction.remove({plaid_id: transaction_id}).exec().then(function(transaction){
               console.log(transaction);
             })
-          })
-        reponse.json({"message":"We deleted what you told us to."})
+        response.json({"message":"We deleted what you told us to."})
         })
         break
       case 4:

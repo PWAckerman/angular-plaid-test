@@ -5,7 +5,11 @@ let mongoose = require('mongoose'),
 let userSchema = new mongoose.Schema({
   userName: String,
   userPassword: String,
-  access_token: [{type: String}],
+  tokens: [{
+    "institution": String,
+    "public_token": String,
+    "access_token":String
+  }],
   institutions: [{type: String}],
   created: {type: Date, default: Date.now},
   budget: {type: String, ref: 'Budget'},
