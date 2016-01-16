@@ -422,7 +422,7 @@ app.post('/api/split/:bucketId', function (req, res) {
             splits: newSplit._id
           }
         }).exec.then(function (bucket) {
-          res.status(201).send(bucket);
+          console.log(bucket)
         }).catch(function (err) {
           res.status(500).send(err);
         });
@@ -431,6 +431,7 @@ app.post('/api/split/:bucketId', function (req, res) {
         res.status(500).send(err);
       });
     });
+    res.status(200).send({message: 'You did it'})
   }
 });
 
