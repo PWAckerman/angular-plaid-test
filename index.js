@@ -18,6 +18,7 @@ let plaid = require('plaid'),
   Webhook = require("./models/webhook.model.js"),
   Transaction = require("./models/transaction.model.js"),
   Tokens = require("./models/tokens.model.js"),
+  SplitTransaction = require("./models/splittransaction.model.js"),
   userCtrl = require("./controllers/user.server.controller.js"),
   secrets = require("./secrets.js"),
 
@@ -99,20 +100,20 @@ app
   })
 
 // break out into user routes/controllers
+.get('/users/all', (req, response) => {
+    User.find((err, res) => {
+      response.json(res)
+    })
+  })
+  .get('/user/:id/populate', (req, response) => {
+    return userCtrl.populateUser(req, response);
+  })
+  // grab all users from database
   .get('/users/all', (req, response) => {
     User.find((err, res) => {
       response.json(res)
     })
   })
-  .get('/user/:id/populate', (req, response)=>{
-    return userCtrl.populateUser(req, response);
-  })
-// grab all users from database
-.get('/users/all', (req, response) => {
-  User.find((err, res) => {
-    response.json(res)
-  })
-})
 .patch('/user/:id', (req, response)=>{
   User.findByIdAndUpdate(req.params.id, req.body, {new: true}).exec((err, doc)=>{
     response.json(doc)
@@ -236,8 +237,6 @@ app
                   category: cat
                 })
                 console.log(newTrans)
-                // newTrans.save()
-
               })
               Tokens.findByIdAndUpdate(res[0]._id, {lastPull: Date.now()}, {new: true}).exec().then(
                 (doc) => {
@@ -253,10 +252,12 @@ app
                   response.json({
                     message: `No new transactions, Plaid. What are you thinking...`
                   })
-              })
-            }
-          })
-        })
+              }).catch(
+              (err) => console.log(err)
+              )}
+            })
+          }
+        )
         break
       case 3:
         console.log('REMOVED TRANSACTION')
@@ -264,15 +265,17 @@ app
             Transaction.remove({plaid_id: transaction_id}).exec().then(function(transaction){
               console.log(transaction);
             })
-        response.json({"message":"We deleted what you told us to."})
+        reponse.json({
+          "message": "We deleted what you told us to."
         })
-        break
-      case 4:
-        console.log('WEBHOOK UPDATED')
-        break
-      default:
-        console.log('SOME SORT OF ERROR', req.body.code, req.body.message)
-        break
+      })
+      break
+    case 4:
+      console.log('WEBHOOK UPDATED')
+      break
+    default:
+      console.log('SOME SORT OF ERROR', req.body.code, req.body.message)
+      break
     }
   })
 
@@ -280,9 +283,9 @@ app
 // transaction endpoints
 
 // get all transactions for particular user
-app.get('/api/transactions/user/:id', function (req, res) {
+app.get('/api/transactions/user/:userId', function (req, res) {
   Transaction.find({
-    user: req.params.id
+    user: req.params.userId
   }).exec().then(function (transactions) {
     res.status(200).send(transactions);
   }).catch(function (err) {
@@ -291,9 +294,9 @@ app.get('/api/transactions/user/:id', function (req, res) {
 });
 
 // get a specific transaction based off of transaction id
-app.get('/api/transactions/:id', function (req, res) {
+app.get('/api/transactions/:transId', function (req, res) {
   Transaction.find({
-    _id: req.params.id
+    _id: req.params.transId
   }).exec().then(function (transaction) {
     res.status(200).send(transaction);
   }).catch(function (err) {
@@ -302,9 +305,9 @@ app.get('/api/transactions/:id', function (req, res) {
 });
 
 // edit a specific transaction and then return that updated transaction via new: true
-app.patch('/api/transactions/:id', function (req, res) {
+app.patch('/api/transactions/:transid', function (req, res) {
   console.log(req.body);
-  Transaction.findByIdAndUpdate(req.params.id, req.body, {
+  Transaction.findByIdAndUpdate(req.params.transId, req.body, {
     new: true
   }).exec().then(function (transaction) {
     res.status(201).send(transaction);
@@ -328,9 +331,12 @@ app.delete('/api/transactions/:id', function (req, res) {
 
 // get untagged transactions specific to user
 app.get('/api/transactions/untagged/:userId', function (req, res) {
-  Transaction.find({user: req.params.userId, tagged: false}).exec().then(function(transactions) {
+  Transaction.find({
+    user: req.params.userId,
+    tagged: false
+  }).exec().then(function (transactions) {
     res.status(200).send(transactions);
-  }).catch(function(err) {
+  }).catch(function (err) {
     res.status(500).send(err);
   });
 })
@@ -373,7 +379,7 @@ app.post('/api/subbudget', function (req, res) {
 });
 
 // delete a subbudget specific to the user and users budget
-app.delete('/api/subbudget/:id', function(req, res) {
+app.delete('/api/subbudget/:id', function (req, res) {
   Subbudget.remove({
     _id: req.params.id
   }).exec().then(function (transaction) {
@@ -381,6 +387,51 @@ app.delete('/api/subbudget/:id', function(req, res) {
   }).catch(function (err) {
     res.status(500).send(err);
   });
+});
+
+// will update subbudget transaction array with id if
+// there are no splits, if not...
+// split transactions are distributed to
+// corresponding buckets
+app.post('/api/split/:bucketId', function (req, res) {
+  if (req.body.splits.length === 0) {
+    Subbudget.findByIdAndUpdate(req.params.bucketId, {
+      $addToSet: {
+        transactions: req.body.transId
+      }
+    }, {
+      new: true
+    }).exec().then(function (bucket) {
+      Transaction.findByIdAndUpdate(req.body.transId, {
+        tagged: true
+      }).exec().then(function (transaction) {
+        res.status(201).send(transaction);
+      }).catch(function (err) {});
+    }).catch(function (err) {
+      res.status(500).send(err);
+    });
+  } else {
+    req.body.splits.forEach(function (split, index) {
+      let newSplit = new SplitTransaction({
+        amount: split.amount,
+        transaction: req.body.transId
+      });
+      newSplit.save().then(function (newSplit) {
+        Subbudget.findByIdAndUpdate(split.bucketId, {
+          $addToSet: {
+            splits: newSplit._id
+          }
+        }).exec.then(function (bucket) {
+          res.status(201).send(bucket);
+        }).catch(function (err) {
+          res.status(500).send(err);
+        });
+
+      }).catch(function (err) {
+        res.status(500).send(err);
+      });
+    });
+  }
 });
 
 
