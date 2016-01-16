@@ -1,15 +1,31 @@
 'use strict';
 let mongoose = require('mongoose'),
-    deepPopulate = require('mongoose-deep-populate')(mongoose)
+  deepPopulate = require('mongoose-deep-populate')(mongoose)
 
 let subBudgetSchema = new mongoose.Schema({
-  budget: {type: String, ref: 'Budget'},
+  budget: {
+    type: String,
+    ref: 'Budget'
+  },
   name: String,
-  user: {type: String, ref: 'User'},
+  user: {
+    type: String,
+    ref: 'User'
+  },
   allocated: Number,
   category: String,
-  created: {type: Date, default: Date.now},
-  transactions: [{type: String, ref: 'Transaction'}]
+  created: {
+    type: Date,
+    default: Date.now
+  },
+  transactions: [{
+    type: String,
+    ref: 'Transaction'
+  }],
+  splits: [{
+    type: String,
+    ref: 'SplitTransaction'
+  }]
 })
 
 subBudgetSchema.plugin(deepPopulate)
