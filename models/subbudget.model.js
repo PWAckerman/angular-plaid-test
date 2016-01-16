@@ -9,7 +9,11 @@ let subBudgetSchema = new mongoose.Schema({
   allocated: Number,
   category: String,
   created: {type: Date, default: Date.now},
-  transactions: [{type: String, ref: 'Transaction'}]
+  transactions: [{type: String, ref: 'Transaction'}],
+  splits: [{
+    type: String,
+    ref: 'SplitTransaction'
+  }]
 })
 
 subBudgetSchema.plugin(deepPopulate)
