@@ -421,7 +421,7 @@ app.post('/api/split/:bucketId', function (req, res) {
           $addToSet: {
             splits: newSplit._id
           }
-        }).exec.then(function (bucket) {
+        }).exec().then(function (bucket) {
           console.log(bucket)
         }).catch(function (err) {
           res.status(500).send(err);
