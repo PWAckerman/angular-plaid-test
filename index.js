@@ -54,12 +54,14 @@ pushyMessage.addNotification({
 })
 
 let sender = new gcm.Sender(secrets.secrets.gcm_key)
-// endpoint for adding banks via plaid
+  // endpoint for adding banks via plaid
 app
   .use(cors())
   .use(bodyParser.json())
   .use(express.static(__dirname))
-  .use(session({secret: 'something'}))
+  .use(session({
+    secret: 'something'
+  }))
   .use(passport.initialize())
   .use(passport.session())
   .use(flash())
@@ -68,56 +70,68 @@ app
       token: req.body.token,
       user: req.body.user
     })
-    token.save().then(function(doc){
+    token.save().then(function (doc) {
       response.json(doc)
     })
   })
   //GCM Push Notification Test endpoint
   .post('/gcm', (req, response) => {
-    sender.sendNoRetry(pushyMessage, {registrationTokens: ['cPccdlz7JbU:APA91bE53PH5CIugwV8OddfosOYxvjSqXQ8rqi9v2JcYk3hxCo3BzPuO7K9sNVCrJ9omWYvSkkVKT_Nrg8sK9okkBEVKE8qihiqUwSs8syoA9-YuNhAZVKMYH9rtlcP9Zg58ypNCDq7X']}, (err, res)=>{
-      (err) ? console.error(err) : response.json(pushyMessage)
+    sender.sendNoRetry(pushyMessage, {
+      registrationTokens: ['cPccdlz7JbU:APA91bE53PH5CIugwV8OddfosOYxvjSqXQ8rqi9v2JcYk3hxCo3BzPuO7K9sNVCrJ9omWYvSkkVKT_Nrg8sK9okkBEVKE8qihiqUwSs8syoA9-YuNhAZVKMYH9rtlcP9Zg58ypNCDq7X']
+    }, (err, res) => {
+      (err) ? console.error(err): response.json(pushyMessage)
     })
   })
   //GCM Push Registration Webhook
-  .post('/gcmhook', (req, response) =>{
+  .post('/gcmhook', (req, response) => {
     console.log('hook was hit!')
     console.log(req.body)
-    if(req.body._push){
-      if(req.body._push.android_tokens && req.body.unregister === false){
+    if (req.body._push) {
+      if (req.body._push.android_tokens && req.body.unregister === false) {
         let blob = new Blob({
           blob: req.body
         })
         blob.save()
-        response.status(200).json({message: 'android'})
-      } else if(req.body._push.ios_tokens && req.body.unregister === false){
-        let blob = new Blob({
-          blob: req.body
+        response.status(200).json({
+          message: 'android'
         })
-        blob.save()
-        console.log(req.body)
-        response.status(200).json({message: 'ios'})
-      } else if(req.body._push.android_tokens && req.body.unregister === true){
+      } else if (req.body._push.ios_tokens && req.body.unregister === false) {
         let blob = new Blob({
           blob: req.body
         })
         blob.save()
         console.log(req.body)
-        response.status(200).json({message: 'deregister android'})
-      } else if(req.body._push.ios_tokens && req.body.unregister === true){
+        response.status(200).json({
+          message: 'ios'
+        })
+      } else if (req.body._push.android_tokens && req.body.unregister === true) {
         let blob = new Blob({
           blob: req.body
         })
         blob.save()
         console.log(req.body)
-        response.status(200).json({message: 'deregister ios'})
+        response.status(200).json({
+          message: 'deregister android'
+        })
+      } else if (req.body._push.ios_tokens && req.body.unregister === true) {
+        let blob = new Blob({
+          blob: req.body
+        })
+        blob.save()
+        console.log(req.body)
+        response.status(200).json({
+          message: 'deregister ios'
+        })
       }
-    } else if(req.body.token_invalid) {
+    } else if (req.body.token_invalid) {
       let blob = new Blob({
         blob: req.body
       })
       blob.save()
       console.log(req.body)
-      response.status(200).json({message: 'token invalid'})
+      response.status(200).json({
+        message: 'token invalid'
+      })
     } else {
       let blob = new Blob({
         blob: req.body
@@ -161,11 +175,13 @@ app
       response.json(res)
     })
   })
-.patch('/user/:id', (req, response)=>{
-  User.findByIdAndUpdate(req.params.id, req.body, {new: true}).exec((err, doc)=>{
-    response.json(doc)
+  .patch('/user/:id', (req, response) => {
+    User.findByIdAndUpdate(req.params.id, req.body, {
+      new: true
+    }).exec((err, doc) => {
+      response.json(doc)
+    })
   })
-})
 
 //
 //
@@ -213,38 +229,79 @@ app
       access_token: req.body.access_token || '0',
     })
     webhook.save()
-    switch(req.body.code){
-      case 0:
-        console.log('INITIAL TRANSACTION PULL')
-        let idToSearch = ''
-        Tokens.find({access_token: req.body.access_token}).exec((err, res)=>{
-          idToSearch = res[0].user
-          plaidClient.getConnectUser(req.body.access_token, {
-            "pending": true
-          }, (err, res2) => {
-            Tokens.findByIdAndUpdate(res[0]._id, {institution_type: res2.accounts[0].institution_type, lastPull: Date.now()}, {new: true}).exec((err,res)=>{
-              console.log(res)
+    switch (req.body.code) {
+    case 0:
+      console.log('INITIAL TRANSACTION PULL')
+      let idToSearch = ''
+      Tokens.find({
+        access_token: req.body.access_token
+      }).exec((err, res) => {
+        idToSearch = res[0].user
+        plaidClient.getConnectUser(req.body.access_token, {
+          "pending": true
+        }, (err, res2) => {
+          Tokens.findByIdAndUpdate(res[0]._id, {
+            institution_type: res2.accounts[0].institution_type,
+            lastPull: Date.now()
+          }, {
+            new: true
+          }).exec((err, res) => {
+            console.log(res)
+          })
+          res2.accounts.map((account) => {
+            let newAccount = new Account({
+              user: res[0].user,
+              institution_type: account.institution_type,
+              institution: 'PLACEHOLDER',
+              name: account.meta.name,
+              type: account.type,
+              subtype: account.subtype || '',
             })
-            res2.accounts.map((account)=>{
-              let newAccount = new Account({
-                user: res[0].user,
-                institution_type: account.institution_type,
-                institution: 'PLACEHOLDER',
-                name: account.meta.name,
-                type: account.type,
-                subtype: account.subtype || '',
-              })
 
-              console.log(account)
+            console.log(account)
               // newAccount.save()
+          })
+          res2.transactions.map((transaction) => {
+            let cat = ''
+            if (transaction.category) {
+              cat = transaction.category
+            }
+            let newTrans = new Transaction({
+              user: res[0]._id.toString(),
+              name: transaction.name,
+              account: transaction._account,
+              amount: transaction.amount,
+              plaid_id: transaction._id,
+              posted: transaction.date,
+              category: cat
             })
-            res2.transactions.map((transaction)=>{
+            console.log(newTrans)
+              // newTrans.save()
+          })
+        })
+      })
+      break;
+    case 1:
+      console.log('HISTORICAL TRANSACTION PULL')
+      break
+    case 2:
+      console.log('NORMAL TRANSACTION PULL')
+      Tokens.find({
+        access_token: req.body.access_token
+      }).exec((err, res) => {
+        plaidClient.getConnectUser(req.body.access_token, {
+          "pending": true,
+          "gte": res[0].lastPull
+        }, (err, res2) => {
+          console.log(res[0].lastPull)
+          if (res2.transactions.length > 0) {
+            res2.transactions.map((transaction) => {
               let cat = ''
-              if(transaction.category){
+              if (transaction.category) {
                 cat = transaction.category
               }
               let newTrans = new Transaction({
-                user: res[0]._id.toString(),
+                user: res[0]._id,
                 name: transaction.name,
                 account: transaction._account,
                 amount: transaction.amount,
@@ -253,65 +310,44 @@ app
                 category: cat
               })
               console.log(newTrans)
-              // newTrans.save()
             })
-          })
-        })
-        break;
-      case 1:
-        console.log('HISTORICAL TRANSACTION PULL')
-        break
-      case 2:
-        console.log('NORMAL TRANSACTION PULL')
-        Tokens.find({access_token: req.body.access_token}).exec((err, res) => {
-          plaidClient.getConnectUser(req.body.access_token, {
-            "pending": true, "gte": res[0].lastPull
-          }, (err, res2) => {
-            console.log(res[0].lastPull)
-            if(res2.transactions.length > 0){
-              res2.transactions.map((transaction)=>{
-                let cat = ''
-                if(transaction.category){
-                  cat = transaction.category
-                }
-                let newTrans = new Transaction({
-                  user: res[0]._id,
-                  name: transaction.name,
-                  account: transaction._account,
-                  amount: transaction.amount,
-                  plaid_id: transaction._id,
-                  posted: transaction.date,
-                  category: cat
+            Tokens.findByIdAndUpdate(res[0]._id, {
+              lastPull: Date.now()
+            }, {
+              new: true
+            }).exec().then(
+              (doc) => {
+                console.log(doc)
+                response.json({
+                  message: `${res2.transactions.length} new transactions...`
                 })
-                console.log(newTrans)
               })
-              Tokens.findByIdAndUpdate(res[0]._id, {lastPull: Date.now()}, {new: true}).exec().then(
-                (doc) => {
-                  console.log(doc)
-                  response.json({
-                    message: `${res2.transactions.length} new transactions...`
-                  })
-              })
-            } else {
-              Tokens.findByIdAndUpdate(res[0]._id, {lastPull: Date.now()}, {new: true}).exec().then(
-                (doc) => {
-                  console.log(doc)
-                  response.json({
-                    message: `No new transactions, Plaid. What are you thinking...`
-                  })
+          } else {
+            Tokens.findByIdAndUpdate(res[0]._id, {
+              lastPull: Date.now()
+            }, {
+              new: true
+            }).exec().then(
+              (doc) => {
+                console.log(doc)
+                response.json({
+                  message: `No new transactions, Plaid. What are you thinking...`
+                })
               }).catch(
               (err) => console.log(err)
-              )}
-            })
+            )
           }
-        )
-        break
-      case 3:
-        console.log('REMOVED TRANSACTION')
-          req.body.removed_transactions.map((transaction_id)=>{
-            Transaction.remove({plaid_id: transaction_id}).exec().then(function(transaction){
-              console.log(transaction);
-            })
+        })
+      })
+      break
+    case 3:
+      console.log('REMOVED TRANSACTION')
+      req.body.removed_transactions.map((transaction_id) => {
+        Transaction.remove({
+          plaid_id: transaction_id
+        }).exec().then(function (transaction) {
+          console.log(transaction);
+        })
         reponse.json({
           "message": "We deleted what you told us to."
         })
@@ -483,113 +519,114 @@ app.post('/api/split/:bucketId', function (req, res) {
 
 //user register&login
 
-var isValidPassword = function(user, password){
+/*var isValidPassword = function (user, password) {
   return bCrypt.compareSync(password, user.userPassword);
 }
-var createHash = function(password){
- return bCrypt.hashSync(password, bCrypt.genSaltSync(10), null);
-}
+var createHash = function (password) {
+  return bCrypt.hashSync(password, bCrypt.genSaltSync(10), null);
+}*/
 
-passport.serializeUser(function(user, done){
+passport.serializeUser(function (user, done) {
   done(null, user);
 });
 
-passport.deserializeUser(function(id, done) {
-  User.findById(id, function(err, user) {
-        done(err, user);
-    });
+passport.deserializeUser(function (id, done) {
+  User.findById(id, function (err, user) {
+    done(err, user);
+  });
 });
 
-passport.use('signup', new LocalStrategy({passReqToCallback : true},
-  function(req, username, password, done) {
+/*passport.use('signup', new LocalStrategy({
+    passReqToCallback: true
+  },
+  function (req, username, password, done) {
     console.log(req.body);
     // findOrCreateUser = function(){
-      // find a user in Mongo with provided username
-      User.findOne({'userName':username},function(err, user) {
-        // In case of any error return
-        if (err){
-          console.log('Error in SignUp: '+err);
-          return done(err);
-        }
-        // already exists
-        if (user) {
-          console.log('User already exists');
-          return done(null, false)
-            req.flash('message','User Already Exists');
-        } else {
-          // if there is no user with that email
-          // create the user
-          var newUser = new User();
-          // set the user's local credentials
-          newUser.userName = username;
-          newUser.userPassword = createHash(password);
+    // find a user in Mongo with provided username
+    User.findOne({
+      'userName': username
+    }, function (err, user) {
+      // In case of any error return
+      if (err) {
+        console.log('Error in SignUp: ' + err);
+        return done(err);
+      }
+      // already exists
+      if (user) {
+        console.log('User already exists');
+        return done(null, false)
+        req.flash('message', 'User Already Exists');
+      } else {
+        // if there is no user with that email
+        // create the user
+        var newUser = new User();
+        // set the user's local credentials
+        newUser.userName = username;
+        newUser.userPassword = createHash(password);
 
-          // save the user
-          newUser.save(function(err) {
-            if (err){
-              console.log('Error in Saving user: '+err);
-              throw err;
-            }
-            console.log('User Registration succesful');
-            return done(null, newUser);
-          });
-        }
-      });
+        // save the user
+        newUser.save(function (err) {
+          if (err) {
+            console.log('Error in Saving user: ' + err);
+            throw err;
+          }
+          console.log('User Registration succesful');
+          return done(null, newUser);
+        });
+      }
+    });
     // };
     // process.nextTick(findOrCreateUser);
   }
-));
+));*/
 
-passport.use('login', new LocalStrategy({passReqToCallback : true},
-  function(req, username, password, done) {
+
+passport.use('login', new LocalStrategy({
+    passReqToCallback: true
+  },
+  function (req, username, password, done) {
     console.log('username', req.body);
     // check in mongo if a user with username exists or not
-    User.findOne({ 'userName' :  username },
-      function(err, user) {
+    User.findOne({
+        'userName': username
+      },
+      function (err, user) {
         // In case of any error, return using the done method
-        if (err){
-          console.log(err);
+        if (err) {
           return done(err);
         }
         // Username does not exist, log error & redirect back
-        if (!user){
-          console.log('User Not Found with username '+username);
-          return done(null, false,
-                req.flash('message', 'User Not found.'));
+        if (!user) {
+          console.log('User Not Found with username ' + username);
+          return done(null, false);
         }
         // User exists but wrong password, log the error
-        if (!isValidPassword(user, password)){
-          console.log('Invalid Password');
-          return done(null, false,
-              req.flash('message', 'Invalid Password'));
-        }
-        console.log('login successful');
+        /*  if (!isValidPassword(user, password)) {
+    console.log('Invalid Password');
+    return done(null, false,
+  }*/
         // User and password both match, return user from
         // done method which will be treated like success
         return done(null, user);
       }
     );
-}));
+  }));
 
-app.get('/', function(req, res) {
-    // Display the Login page with any flash message, if any
-    // res.render('index', { message: req.flash('message') });
+
+
+app.post('/login', passport.authenticate('login'), function (req, res) {
+  console.log('CALLBACK');
+  res.status(200).send(req.user);
 });
 
+app.get('/currentuser', function (req, res) {
+  console.log(req.user);
+  res.status(200).send(req.user);
+});
 
-app.post('/login', passport.authenticate('login',
-  {
-    successRedirect: '/home',
-    failureRedirect: '/test',
-    failureFlash: true
-}));
-
-app.post('/signup', passport.authenticate('signup',
-    {
-      successRedirect: '/home',
-      failureRedirect: '/test',
-      failureFlash: true
-}));
+/*app.post('/signup', passport.authenticate('signup'), function(req, res) {
+  res.status(200).send(req.user);
+});*/
 
 
 app.listen(3001, () => console.log('Listening on 3001'));
