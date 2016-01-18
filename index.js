@@ -555,7 +555,6 @@ passport.deserializeUser(function (id, done) {
       if (user) {
         console.log('User already exists');
         return done(null, false)
-        req.flash('message', 'User Already Exists');
       } else {
         // if there is no user with that email
         // create the user
