@@ -27,6 +27,7 @@ let plaid = require('plaid'),
   Blob = require("./models/blob.model.js"),
   SplitTransaction = require("./models/splittransaction.model.js"),
   userCtrl = require("./controllers/user.server.controller.js"),
+  authCtrl = require("./controllers/auth.server.controller.js"),
   secrets = require("./secrets.js"),
 
   // configs and application
@@ -472,6 +473,7 @@ app.delete('/api/subbudget/:id', function (req, res) {
   });
 });
 
+
 // will update subbudget transaction array with id if
 // there are no splits, if not...
 // split transactions are distributed to
@@ -612,7 +614,7 @@ passport.use('login', new LocalStrategy({
   }));
 
 
-
+// protect routes with authCtrl.isAuthenticated()
 app.post('/login', passport.authenticate('login'), function (req, res) {
   console.log('CALLBACK');
   res.status(200).send(req.user);
@@ -622,6 +624,8 @@ app.get('/currentuser', function (req, res) {
   console.log(req.user);
   res.status(200).send(req.user);
 });
+
+
 
 /*app.post('/signup', passport.authenticate('signup'), function(req, res) {
   res.status(200).send(req.user);
