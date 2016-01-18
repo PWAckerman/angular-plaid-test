@@ -48,6 +48,18 @@ pushyMessage.addNotification({
   icon: 'ic_launcher'
 })
 
+function messageAssembler(body, regToken){
+  let newMessage = new gcm.Message();
+  newMessage.addNotification({
+    title: 'PushBudget',
+    body: body,
+    icon: 'ic_launcher'
+  })
+  sender.sendNoRetry(newMessage, {registrationTokens: [regToken]}, (err, res) =>{
+    (err) ? console.error(err) : console.log(res)
+  })
+}
+
 let sender = new gcm.Sender(secrets.secrets.gcm_key)
 // endpoint for adding banks via plaid
 app
@@ -208,8 +220,9 @@ app
       case 0:
         console.log('INITIAL TRANSACTION PULL')
         let idToSearch = ''
+        console.log(req.body.access_token)
         Tokens.find({access_token: req.body.access_token}).exec((err, res)=>{
-          idToSearch = res[0].user
+          console.log(err)
           plaidClient.getConnectUser(req.body.access_token, {
             "pending": true
           }, (err, res2) => {
@@ -227,7 +240,7 @@ app
               })
 
               console.log(account)
-              // newAccount.save()
+              newAccount.save()
             })
             res2.transactions.map((transaction)=>{
               let cat = ''
@@ -235,7 +248,7 @@ app
                 cat = transaction.category
               }
               let newTrans = new Transaction({
-                user: res[0]._id.toString(),
+                user: res[0].user,
                 name: transaction.name,
                 account: transaction._account,
                 amount: transaction.amount,
@@ -244,7 +257,12 @@ app
                 category: cat
               })
               console.log(newTrans)
-              // newTrans.save()
+              newTrans.save()
+            })
+            RegToken.find({user: res[0].user}).exec((err, regToken)=>{
+              console.log(res[0]._id)
+              console.log(regToken)
+              messageAssembler("Welcome to Pushbudget! Don't forget to tag your transactions!", regToken[0].token)
             })
           })
         })
@@ -266,7 +284,7 @@ app
                   cat = transaction.category
                 }
                 let newTrans = new Transaction({
-                  user: res[0]._id,
+                  user: res[0].user,
                   name: transaction.name,
                   account: transaction._account,
                   amount: transaction.amount,
@@ -275,6 +293,7 @@ app
                   category: cat
                 })
                 console.log(newTrans)
+                newTrans.save()
               })
               Tokens.findByIdAndUpdate(res[0]._id, {lastPull: Date.now()}, {new: true}).exec().then(
                 (doc) => {
@@ -282,6 +301,12 @@ app
                   response.json({
                     message: `${res2.transactions.length} new transactions...`
                   })
+                  RegToken.find({user: res[0].user}).exec( (err, regToken)=>{
+                    console.log(res[0]._id)
+                    console.log(regToken)
+                    messageAssembler(`${res2.transactions.length} new transactions...`, regToken[0].token)
+                  })
+                  //add push transaction update here
               })
             } else {
               Tokens.findByIdAndUpdate(res[0]._id, {lastPull: Date.now()}, {new: true}).exec().then(
@@ -299,14 +324,21 @@ app
         break
       case 3:
         console.log('REMOVED TRANSACTION')
-          req.body.removed_transactions.map((transaction_id)=>{
-            Transaction.remove({plaid_id: transaction_id}).exec().then(function(transaction){
-              console.log(transaction);
+        req.body.removed_transactions.map((transaction_id)=>{
+          Transaction.remove({plaid_id: transaction_id}).exec().then((transaction)=>{
+            console.log(transaction);
+          })
+        })
+        Tokens.find({access_token: req.body.access_token}).exec().then(
+          (tokens) => {
+            RegToken.find({user: tokens[0].user}).exec( (err, regToken)=>{
+              console.log(regToken)
+              messageAssembler(`${req.body.removed_transactions.length} transactions were deleted by your institution...`, regToken[0].token)
             })
-        reponse.json({
+          })
+        response.json({
           "message": "We deleted what you told us to."
         })
-      })
       break
     case 4:
       console.log('WEBHOOK UPDATED')
