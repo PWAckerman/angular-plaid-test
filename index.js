@@ -579,15 +579,15 @@ app.get('/', function(req, res) {
 
 app.post('/login', passport.authenticate('login',
   {
-    successRedirect: '/#/',
-    failureRedirect: '/home',
+    successRedirect: '/home',
+    failureRedirect: '/test',
     failureFlash: true
 }));
 
 app.post('/signup', passport.authenticate('signup',
     {
-      successRedirect: '/#/createLineup',
-      failureRedirect: '/#/login',
+      successRedirect: '/home',
+      failureRedirect: '/test',
       failureFlash: true
 }));
 
