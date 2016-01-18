@@ -59,6 +59,10 @@ app
   .use(cors())
   .use(bodyParser.json())
   .use(express.static(__dirname))
+  .use(session({secret: 'something'}))
+  .use(passport.initialize())
+  .use(passport.session())
+  .use(flash())
   .post('/app/regtoken', (req, response) => {
     let token = new RegToken({
       token: req.body.token,
