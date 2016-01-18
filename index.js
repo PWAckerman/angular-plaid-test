@@ -16,8 +16,10 @@ let plaid = require('plaid'),
   SubBudget = require("./models/subbudget.model.js"),
   Account = require("./models/account.model.js"),
   Webhook = require("./models/webhook.model.js"),
+  RegToken = require("./models/registrationtoken.model.js"),
   Transaction = require("./models/transaction.model.js"),
   Tokens = require("./models/tokens.model.js"),
+  Blob = require("./models/blob.model.js"),
   SplitTransaction = require("./models/splittransaction.model.js"),
   userCtrl = require("./controllers/user.server.controller.js"),
   secrets = require("./secrets.js"),
@@ -41,7 +43,7 @@ if (environment === 'development') {
 //GCM Push Notification Test
 let pushyMessage = new gcm.Message();
 pushyMessage.addNotification({
-  title: 'Alert!!!',
+  title: 'PushBudget',
   body: 'You just got served.',
   icon: 'ic_launcher'
 })
@@ -52,30 +54,66 @@ app
   .use(cors())
   .use(bodyParser.json())
   .use(express.static(__dirname))
+  .post('/app/regtoken', (req, response) => {
+    let token = new RegToken({
+      token: req.body.token,
+      user: req.body.user
+    })
+    token.save().then(function(doc){
+      response.json(doc)
+    })
+  })
   //GCM Push Notification Test endpoint
   .post('/gcm', (req, response) => {
-    sender.sendNoRetry(pushyMessage, {registrationTokens: ['registrationtoken']}, (err, res)=>{
-      (err) ? console.error(err) : console.log(response)
+    sender.sendNoRetry(pushyMessage, {registrationTokens: ['cPccdlz7JbU:APA91bE53PH5CIugwV8OddfosOYxvjSqXQ8rqi9v2JcYk3hxCo3BzPuO7K9sNVCrJ9omWYvSkkVKT_Nrg8sK9okkBEVKE8qihiqUwSs8syoA9-YuNhAZVKMYH9rtlcP9Zg58ypNCDq7X']}, (err, res)=>{
+      (err) ? console.error(err) : response.json(pushyMessage)
     })
   })
   //GCM Push Registration Webhook
   .post('/gcmhook', (req, response) =>{
-    if(req.body._push.android_tokens && req.body.unregister === false){
-
-      response.status(200)
-    } else if(req.body._push.ios_tokens && req.body.unregister === false){
-
-      response.status(200)
-    } else if(req.body._push.android_tokens && req.body.unregister === true){
-
-      response.status(200)
-    } else if(req.body._push.ios_tokens && req.body.unregister === true){
-
-      response.status(200)
+    console.log('hook was hit!')
+    console.log(req.body)
+    if(req.body._push){
+      if(req.body._push.android_tokens && req.body.unregister === false){
+        let blob = new Blob({
+          blob: req.body
+        })
+        blob.save()
+        response.status(200).json({message: 'android'})
+      } else if(req.body._push.ios_tokens && req.body.unregister === false){
+        let blob = new Blob({
+          blob: req.body
+        })
+        blob.save()
+        console.log(req.body)
+        response.status(200).json({message: 'ios'})
+      } else if(req.body._push.android_tokens && req.body.unregister === true){
+        let blob = new Blob({
+          blob: req.body
+        })
+        blob.save()
+        console.log(req.body)
+        response.status(200).json({message: 'deregister android'})
+      } else if(req.body._push.ios_tokens && req.body.unregister === true){
+        let blob = new Blob({
+          blob: req.body
+        })
+        blob.save()
+        console.log(req.body)
+        response.status(200).json({message: 'deregister ios'})
+      }
     } else if(req.body.token_invalid) {
-
-      response.status(200)
+      let blob = new Blob({
+        blob: req.body
+      })
+      blob.save()
+      console.log(req.body)
+      response.status(200).json({message: 'token invalid'})
     } else {
+      let blob = new Blob({
+        blob: req.body
+      })
+      blob.save()
       console.log("What are you trying to pull, google?")
       response.status(204)
     }
