@@ -452,6 +452,15 @@ app.get('/api/subbudget/:id', function (req, res) {
   });
 });
 
+//get just subbudgets for a particular user
+app.get('/api/user/subbudget/:id', function (req, res) {
+  User.findById(req.params.id).deepPopulate(['budget','budget.subbudgets']).exec().then(function (user) {
+    res.json(user.budget.subbudgets);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
 // edit a specific subbuget and return that newly edited subbuget
 app.patch('/api/subbudget/:id', function (req, res) {
   Subbudget.findByIdAndUpdate(req.params.id, req.body, {
