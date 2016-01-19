@@ -401,17 +401,16 @@ app.patch('/api/transactions/:transid', function (req, res) {
 });
 
 // delete a specific transaction and then return an empty object on success
-app.delete('/api/transactions/:id', function (req, res) {
+//TODO
+app.delete('/api/transactions/:transId', function (req, res) {
   Transaction.remove({
-    _id: req.params.id
+    _id: req.params.transId
   }).exec().then(function (transaction) {
     res.status(204).send(transaction);
   }).catch(function (err) {
     res.status(500).send(err);
   });
 });
-
-// todo: find untagged untransactions by userID
 
 // get untagged transactions specific to user
 app.get('/api/transactions/untagged/:userId', function (req, res) {
@@ -453,26 +452,114 @@ app.patch('/api/subbudget/:id', function (req, res) {
 });
 
 // create a new subbudget specific to the user and users budget
-app.post('/api/subbudget', function (req, res) {
-  var subbudget = new Subbudget(req.body);
-  subbudget.save().then(function (subbudget) {
+app.post('/api/subbudget/:budgetId', function (req, res) {
+  var newSubbudget = new Subbudget(req.body);
+  newSubbudget.save().then(function (subbudget) {
+    Budget.findByIdAndUpdate(req.params.budgetId, {
+      $addToSet: {
+        subbudgets: subbudget._id
+      }
+    }, {
+      new: true
+    }).exec().then(function (budget) {
+      console.log(budget);
+    }).catch(function (err) {
+      res.status(500).send(err);
+    });
     res.status(201).send(subbudget);
   }).catch(function (err) {
+    console.log(err);
     res.status(500).send(err);
   });
 });
 
 // delete a subbudget specific to the user and users budget
-app.delete('/api/subbudget/:id', function (req, res) {
+app.delete('/api/subbudget/:subbudgetId/:budgetId', function (req, res) {
   Subbudget.remove({
-    _id: req.params.id
-  }).exec().then(function (transaction) {
-    res.status(204).send(transaction);
+    _id: req.params.subbudgetId
+  }).exec().then(function (deletedSubbudget) {
+    Budget.findByIdAndUpdate(req.params.budgetId, {
+      $pull: {
+        subbudgets: req.params.subbudgetId
+      }
+    }, {
+      new: true
+    }).exec().then(function (budget) {
+      res.status(204).send(budget);
+    }).catch(function (err) {});
   }).catch(function (err) {
     res.status(500).send(err);
   });
 });
 
+// BUDGET ENDPOINTS
+
+app.get('/api/budget/:userId', function (req, res) {
+  Budget.findOne({
+    user: req.params.userId
+  }).exec().then(function (budget) {
+    res.status(200).send(budget);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
+
+//TODO add to users budget array
+app.post('/api/budget/:userId', function (req, res) {
+  var budget = new Budget(req.body);
+  budget.save().then(function (budget) {
+    User.findByIdAndUpdate(req.params.userId, {
+      $addToSet: {
+        budget: budget
+      }
+    }, {
+      new: true
+    }).exec().then(function (user) {
+      console.log(user);
+    }).catch(function (err) {
+      console.log(err);
+      res.status(500).send(err);
+    });
+    res.status(201).send(budget);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+
+});
+
+app.delete('/api/budget/:budgetId/:userId', function (req, res) {
+
+  Budget.remove({
+    _id: req.params.budgetId
+  }).then(function (budget) {
+    User.findByIdAndUpdate(req.params.userId, {
+      $pull: {
+        budget: req.params.budgetId
+      }
+    }, {
+      new: true
+    }).exec().then(function (user) {
+      console.log(user);
+    }).catch(function (err) {
+      console.log(err);
+      res.status(500).send(err);
+    });
+    res.status(204).send(budget);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+
+});
+
+app.patch('/api/budget/:budgetId', function (req, res) {
+  Budget.findByIdAndUpdate(req.params.budgetId, req.body, {
+    new: true
+  }).exec().then(function (budget) {
+    res.status(201).send(budget);
+  }).catch(function (err) {
+    res.status(500).send(err);
+  });
+});
 
 // will update subbudget transaction array with id if
 // there are no splits, if not...
