@@ -25,6 +25,7 @@ let plaid = require('plaid'),
   Transaction = require("./models/transaction.model.js"),
   Tokens = require("./models/tokens.model.js"),
   Blob = require("./models/blob.model.js"),
+  Institution = require("./models/institution.model.js"),
   SplitTransaction = require("./models/splittransaction.model.js"),
   userCtrl = require("./controllers/user.server.controller.js"),
   authCtrl = require("./controllers/auth.server.controller.js"),
@@ -154,7 +155,7 @@ app
       response.status(204)
     }
   })
-  //Plaid-facing authentication endpoint
+  //Pushbudget-facing authentication endpoint
   .post('/authenticate/:userid', (req, response) => {
     let public_token = req.body.public_token;
     let tokens = new Tokens({
@@ -199,7 +200,6 @@ app
 //
 //
 .get('/plaidTransactions/:id', (req, response) => {
-    console.log("Hit the endpoint...")
     User.findById(req.params.id).exec((err, res) => {
       console.log("about to plaid..", req.params.id);
       if (err) {
@@ -213,7 +213,15 @@ app
       }
     })
   })
-  .post('/user/', (req, response) => {
+.delete('/user/plaid/:access_token/:userid', (req, response)=>{
+    plaidClient.deleteConnectUser(req.params.access_token, (err, res)=>{
+      console.log(res)
+      Accounts.remove({user: req.params.userid}, (err)=>{
+        err ? console.log(err) : response.json(res)
+      })
+    })
+  })
+.post('/user/', (req, response) => {
 
   })
   .patch('/user/webhook/:id', (req, response) => {
@@ -256,17 +264,22 @@ app
                 console.log(res)
               })
               res2.accounts.map((account)=>{
-                let newAccount = new Account({
-                  user: res[0].user,
-                  institution_type: account.institution_type,
-                  institution: 'PLACEHOLDER',
-                  name: account.meta.name,
-                  type: account.type,
-                  subtype: account.subtype || '',
+                Institution.find({institution_type: account.institution_type}).exec().then((institution)=>{
+                  let newAccount = new Account({
+                    user: res[0].user,
+                    institution_type: account.institution_type,
+                    institution: institution._id,
+                    name: `${account.meta.official_name} *${account.meta.number}`,
+                    type: account.type,
+                    subtype: account.subtype || '',
+                    access_token: req.body.access_token
+                  })
+                  newAccount.save((err, doc)=>{
+                    User.findByIdAndUpdate(doc.user, {$addToSet: {
+                      accounts: doc._id,
+                    }}).exec()
+                  })
                 })
-
-                console.log(account)
-                newAccount.save()
               })
               res2.transactions.map((transaction)=>{
                 let cat = ''
@@ -369,6 +382,51 @@ app
       case 4:
         console.log('WEBHOOK UPDATED')
         break
+      case 1215:
+        console.log("Plaid can no longer access the user's account.")
+        Account.update({access_token: req.body.access_token}, {$set: {active: false}}, {multi: true}).exec().then(
+          (accounts) => {
+            console.log(accounts)
+            Tokens.find({access_token: req.body.access_token}).exec().then(
+              (token) => {
+                console.log(token)
+                RegToken.findOne({user: token[0].user}).exec().then(
+                  (regToken) => {
+                      console.log(regToken)
+                      messageAssembler("Your banking credentials are no longer valid. Please re-link through PushBudget.", regToken.token)
+                      response.json({
+                        "message": "That bank is kaput."
+                      }
+                  )
+                }
+            )}
+          )
+          }
+        )
+
+        break
+      case 1205:
+        console.log("The account is locked. Please check with your financial institution, then re-link through PushBudget.")
+        Account.update({access_token: req.body.access_token}, {$set: {active: false}}, {multi: true}).exec().then(
+          (accounts) => {
+            console.log(accounts)
+            Tokens.find({access_token: req.body.access_token}).exec().then(
+              (token) => {
+                console.log(token)
+                RegToken.findOne({user: token[0].user}).exec().then(
+                  (regToken) => {
+                      console.log(regToken)
+                      messageAssembler("Your account has been locked. Please check with your financial institution, then re-link through PushBudget.", regToken.token)
+                      response.json({
+                        "message": "That bank is kaput."
+                      }
+                  )
+                }
+            )}
+          )
+          }
+        )
+        break;
       default:
         console.log('SOME SORT OF ERROR', req.body.code, req.body.message)
         break
@@ -401,7 +459,7 @@ app.get('/api/transactions/:transId', function (req, res) {
 });
 
 // edit a specific transaction and then return that updated transaction via new: true
-app.patch('/api/transactions/:transid', function (req, res) {
+app.patch('/api/transactions/:transid', (req, res)=>{
   console.log(req.body);
   Transaction.findByIdAndUpdate(req.params.transId, req.body, {
     new: true
@@ -411,6 +469,20 @@ app.patch('/api/transactions/:transid', function (req, res) {
     res.status(500).send(err);
   });
 });
+
+app.post('/api/institution', (req, res)=>{
+  let institution = new Institution({
+    name: req.body.name,
+    products: req.body.products,
+    logo: req.body.logo,
+    colors: req.body.colors,
+    plaid_id: req.body.plaid_id,
+    institution_type: req.body.institution_type,
+  })
+  institution.save((err, doc)=>{
+    res.json(doc)
+  })
+})
 
 // delete a specific transaction and then return an empty object on success
 //TODO

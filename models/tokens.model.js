@@ -6,7 +6,7 @@ let tokensSchema = new mongoose.Schema({
     "institution": String,
     "public_token": String,
     "access_token":String,
-    "user":{ type: String, ref: "User"},
+    "user": { type: String, ref: "User"},
     "lastPull": Date
 })
 
