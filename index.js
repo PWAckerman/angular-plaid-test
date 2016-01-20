@@ -55,15 +55,17 @@ pushyMessage.addNotification({
   icon: 'ic_launcher'
 })
 
-function messageAssembler(body, regToken){
+function messageAssembler(body, regToken) {
   let newMessage = new gcm.Message();
   newMessage.addNotification({
     title: 'PushBudget',
     body: body,
     icon: 'ic_launcher'
   })
-  sender.sendNoRetry(newMessage, {registrationTokens: [regToken]}, (err, res) =>{
-    (err) ? console.error(err) : console.log(res)
+  sender.sendNoRetry(newMessage, {
+    registrationTokens: [regToken]
+  }, (err, res) => {
+    (err) ? console.error(err): console.log(res)
   })
 }
 
@@ -213,15 +215,17 @@ app
       }
     })
   })
-.delete('/user/plaid/:access_token/:userid', (req, response)=>{
-    plaidClient.deleteConnectUser(req.params.access_token, (err, res)=>{
+  .delete('/user/plaid/:access_token/:userid', (req, response) => {
+    plaidClient.deleteConnectUser(req.params.access_token, (err, res) => {
       console.log(res)
-      Accounts.remove({user: req.params.userid}, (err)=>{
+      Accounts.remove({
+        user: req.params.userid
+      }, (err) => {
         err ? console.log(err) : response.json(res)
       })
     })
   })
-.post('/user/', (req, response) => {
+  .post('/user/', (req, response) => {
 
   })
   .patch('/user/webhook/:id', (req, response) => {
@@ -241,197 +245,253 @@ app
       })
   })
   .post('/webhook', (req, response) => {
-      console.log('WEBHOOK ACTIVATED')
-      var webhook = new Webhook({
-        total_transactions: req.body.total_transactions || 0,
-        code: req.body.code,
-        message: req.body.message,
-        resolve: req.body.resolve || 'Not an error',
-        access_token: req.body.access_token || '0',
-      })
-      webhook.save()
-      switch(req.body.code){
-        case 0:
-          console.log('INITIAL TRANSACTION PULL')
-          let idToSearch = ''
-          console.log(req.body.access_token)
-          Tokens.find({access_token: req.body.access_token}).exec((err, res)=>{
-            console.log(err)
-            plaidClient.getConnectUser(req.body.access_token, {
-              "pending": true
-            }, (err, res2) => {
-              Tokens.findByIdAndUpdate(res[0]._id, {institution_type: res2.accounts[0].institution_type, lastPull: Date.now()}, {new: true}).exec((err,res)=>{
-                console.log(res)
+    console.log('WEBHOOK ACTIVATED')
+    var webhook = new Webhook({
+      total_transactions: req.body.total_transactions || 0,
+      code: req.body.code,
+      message: req.body.message,
+      resolve: req.body.resolve || 'Not an error',
+      access_token: req.body.access_token || '0',
+    })
+    webhook.save()
+    switch (req.body.code) {
+    case 0:
+      console.log('INITIAL TRANSACTION PULL')
+      let idToSearch = ''
+      console.log(req.body.access_token)
+      Tokens.find({
+        access_token: req.body.access_token
+      }).exec((err, res) => {
+        console.log(err)
+        plaidClient.getConnectUser(req.body.access_token, {
+          "pending": true
+        }, (err, res2) => {
+          Tokens.findByIdAndUpdate(res[0]._id, {
+            institution_type: res2.accounts[0].institution_type,
+            lastPull: Date.now()
+          }, {
+            new: true
+          }).exec((err, res) => {
+            console.log(res)
+          })
+          res2.accounts.map((account) => {
+            Institution.find({
+              institution_type: account.institution_type
+            }).exec().then((institution) => {
+              let newAccount = new Account({
+                user: res[0].user,
+                institution_type: account.institution_type,
+                institution: institution._id,
+                name: `${account.meta.official_name} *${account.meta.number}`,
+                type: account.type,
+                subtype: account.subtype || '',
+                access_token: req.body.access_token
               })
-              res2.accounts.map((account)=>{
-                Institution.find({institution_type: account.institution_type}).exec().then((institution)=>{
-                  let newAccount = new Account({
-                    user: res[0].user,
-                    institution_type: account.institution_type,
-                    institution: institution._id,
-                    name: `${account.meta.official_name} *${account.meta.number}`,
-                    type: account.type,
-                    subtype: account.subtype || '',
-                    access_token: req.body.access_token
-                  })
-                  newAccount.save((err, doc)=>{
-                    User.findByIdAndUpdate(doc.user, {$addToSet: {
-                      accounts: doc._id,
-                    }}).exec()
-                  })
-                })
-              })
-              res2.transactions.map((transaction)=>{
-                let cat = ''
-                if(transaction.category){
-                  cat = transaction.category
-                }
-                let newTrans = new Transaction({
-                  user: res[0].user,
-                  name: transaction.name,
-                  account: transaction._account,
-                  amount: transaction.amount,
-                  plaid_id: transaction._id,
-                  posted: transaction.date,
-                  category: cat
-                })
-                console.log(newTrans)
-                newTrans.save()
-              })
-              RegToken.find({user: res[0].user}).exec((err, regToken)=>{
-                console.log(res[0]._id)
-                console.log(regToken)
-                messageAssembler("Welcome to Pushbudget! Don't forget to tag your transactions!", regToken[0].token)
+              newAccount.save((err, doc) => {
+                User.findByIdAndUpdate(doc.user, {
+                  $addToSet: {
+                    accounts: doc._id,
+                  }
+                }).exec()
               })
             })
           })
-          break;
-        case 1:
-          console.log('HISTORICAL TRANSACTION PULL')
-          break
-        case 2:
-          console.log('NORMAL TRANSACTION PULL')
-          Tokens.find({access_token: req.body.access_token}).exec((err, res) => {
-            plaidClient.getConnectUser(req.body.access_token, {
-              "pending": true, "gte": res[0].lastPull
-            }, (err, res2) => {
-              console.log(res[0].lastPull)
-              if(res2.transactions.length > 0){
-                res2.transactions.map((transaction)=>{
-                  let cat = ''
-                  if(transaction.category){
-                    cat = transaction.category
-                  }
-                  let newTrans = new Transaction({
-                    user: res[0].user,
-                    name: transaction.name,
-                    account: transaction._account,
-                    amount: transaction.amount,
-                    plaid_id: transaction._id,
-                    posted: transaction.date,
-                    category: cat
-                  })
-                  console.log(newTrans)
-                  newTrans.save()
-                })
-                Tokens.findByIdAndUpdate(res[0]._id, {lastPull: Date.now()}, {new: true}).exec().then(
-                  (doc) => {
-                    console.log(doc)
-                    response.json({
-                      message: `${res2.transactions.length} new transactions...`
-                    })
-                    RegToken.find({user: res[0].user}).exec( (err, regToken)=>{
-                      console.log(res[0]._id)
-                      console.log(regToken)
-                      messageAssembler(`${res2.transactions.length} new transactions...`, regToken[0].token)
-                    })
-                    //add push transaction update here
-                })
-              } else {
-                Tokens.findByIdAndUpdate(res[0]._id, {lastPull: Date.now()}, {new: true}).exec().then(
-                  (doc) => {
-                    console.log(doc)
-                    response.json({
-                      message: `No new transactions, Plaid. What are you thinking...`
-                    })
-                }).catch(
-                (err) => console.log(err)
-                )}
+          res2.transactions.map((transaction) => {
+            let cat = ''
+            if (transaction.category) {
+              cat = transaction.category
+            }
+            let newTrans = new Transaction({
+              user: res[0].user,
+              name: transaction.name,
+              account: transaction._account,
+              amount: transaction.amount,
+              plaid_id: transaction._id,
+              posted: transaction.date,
+              category: cat
+            })
+            console.log(newTrans)
+            newTrans.save()
+          })
+          RegToken.find({
+            user: res[0].user
+          }).exec((err, regToken) => {
+            console.log(res[0]._id)
+            console.log(regToken)
+            messageAssembler("Welcome to Pushbudget! Don't forget to tag your transactions!", regToken[0].token)
+          })
+        })
+      })
+      break;
+    case 1:
+      console.log('HISTORICAL TRANSACTION PULL')
+      break
+    case 2:
+      console.log('NORMAL TRANSACTION PULL')
+      Tokens.find({
+        access_token: req.body.access_token
+      }).exec((err, res) => {
+        plaidClient.getConnectUser(req.body.access_token, {
+          "pending": true,
+          "gte": res[0].lastPull
+        }, (err, res2) => {
+          console.log(res[0].lastPull)
+          if (res2.transactions.length > 0) {
+            res2.transactions.map((transaction) => {
+              let cat = ''
+              if (transaction.category) {
+                cat = transaction.category
+              }
+              let newTrans = new Transaction({
+                user: res[0].user,
+                name: transaction.name,
+                account: transaction._account,
+                amount: transaction.amount,
+                plaid_id: transaction._id,
+                posted: transaction.date,
+                category: cat
               })
+              console.log(newTrans)
+              newTrans.save()
+            })
+            Tokens.findByIdAndUpdate(res[0]._id, {
+              lastPull: Date.now()
+            }, {
+              new: true
+            }).exec().then(
+              (doc) => {
+                console.log(doc)
+                response.json({
+                  message: `${res2.transactions.length} new transactions...`
+                })
+                RegToken.find({
+                    user: res[0].user
+                  }).exec((err, regToken) => {
+                    console.log(res[0]._id)
+                    console.log(regToken)
+                    messageAssembler(`${res2.transactions.length} new transactions...`, regToken[0].token)
+                  })
+                  //add push transaction update here
+              })
+          } else {
+            Tokens.findByIdAndUpdate(res[0]._id, {
+              lastPull: Date.now()
+            }, {
+              new: true
+            }).exec().then(
+              (doc) => {
+                console.log(doc)
+                response.json({
+                  message: `No new transactions, Plaid. What are you thinking...`
+                })
+              }).catch(
+              (err) => console.log(err)
+            )
+          }
+        })
+      })
+      break
+    case 3:
+      console.log('REMOVED TRANSACTION')
+      req.body.removed_transactions.map((transaction_id) => {
+        Transaction.remove({
+          plaid_id: transaction_id
+        }).exec().then((transaction) => {
+          console.log(transaction);
+        })
+      })
+      Tokens.find({
+        access_token: req.body.access_token
+      }).exec().then(
+        (tokens) => {
+          RegToken.find({
+            user: tokens[0].user
+          }).exec((err, regToken) => {
+            console.log(regToken)
+            messageAssembler(`${req.body.removed_transactions.length} transactions were deleted by your institution...`, regToken[0].token)
+          })
+        })
+      response.json({
+        "message": "We deleted what you told us to."
+      })
+      break
+    case 4:
+      console.log('WEBHOOK UPDATED')
+      break
+    case 1215:
+      console.log("Plaid can no longer access the user's account.")
+      Account.update({
+        access_token: req.body.access_token
+      }, {
+        $set: {
+          active: false
+        }
+      }, {
+        multi: true
+      }).exec().then(
+        (accounts) => {
+          console.log(accounts)
+          Tokens.find({
+            access_token: req.body.access_token
+          }).exec().then(
+            (token) => {
+              console.log(token)
+              RegToken.findOne({
+                user: token[0].user
+              }).exec().then(
+                (regToken) => {
+                  console.log(regToken)
+                  messageAssembler("Your banking credentials are no longer valid. Please re-link through PushBudget.", regToken.token)
+                  response.json({
+                    "message": "That bank is kaput."
+                  })
+                }
+              )
             }
           )
-          break
-        case 3:
-          console.log('REMOVED TRANSACTION')
-          req.body.removed_transactions.map((transaction_id)=>{
-            Transaction.remove({plaid_id: transaction_id}).exec().then((transaction)=>{
-              console.log(transaction);
-            })
-          })
-          Tokens.find({access_token: req.body.access_token}).exec().then(
-            (tokens) => {
-              RegToken.find({user: tokens[0].user}).exec( (err, regToken)=>{
-                console.log(regToken)
-                messageAssembler(`${req.body.removed_transactions.length} transactions were deleted by your institution...`, regToken[0].token)
-              })
-            })
-          response.json({
-            "message": "We deleted what you told us to."
-          })
-        break
-      case 4:
-        console.log('WEBHOOK UPDATED')
-        break
-      case 1215:
-        console.log("Plaid can no longer access the user's account.")
-        Account.update({access_token: req.body.access_token}, {$set: {active: false}}, {multi: true}).exec().then(
-          (accounts) => {
-            console.log(accounts)
-            Tokens.find({access_token: req.body.access_token}).exec().then(
-              (token) => {
-                console.log(token)
-                RegToken.findOne({user: token[0].user}).exec().then(
-                  (regToken) => {
-                      console.log(regToken)
-                      messageAssembler("Your banking credentials are no longer valid. Please re-link through PushBudget.", regToken.token)
-                      response.json({
-                        "message": "That bank is kaput."
-                      }
-                  )
-                }
-            )}
-          )
-          }
-        )
+        }
+      )
 
-        break
-      case 1205:
-        console.log("The account is locked. Please check with your financial institution, then re-link through PushBudget.")
-        Account.update({access_token: req.body.access_token}, {$set: {active: false}}, {multi: true}).exec().then(
-          (accounts) => {
-            console.log(accounts)
-            Tokens.find({access_token: req.body.access_token}).exec().then(
-              (token) => {
-                console.log(token)
-                RegToken.findOne({user: token[0].user}).exec().then(
-                  (regToken) => {
-                      console.log(regToken)
-                      messageAssembler("Your account has been locked. Please check with your financial institution, then re-link through PushBudget.", regToken.token)
-                      response.json({
-                        "message": "That bank is kaput."
-                      }
-                  )
+      break
+    case 1205:
+      console.log("The account is locked. Please check with your financial institution, then re-link through PushBudget.")
+      Account.update({
+        access_token: req.body.access_token
+      }, {
+        $set: {
+          active: false
+        }
+      }, {
+        multi: true
+      }).exec().then(
+        (accounts) => {
+          console.log(accounts)
+          Tokens.find({
+            access_token: req.body.access_token
+          }).exec().then(
+            (token) => {
+              console.log(token)
+              RegToken.findOne({
+                user: token[0].user
+              }).exec().then(
+                (regToken) => {
+                  console.log(regToken)
+                  messageAssembler("Your account has been locked. Please check with your financial institution, then re-link through PushBudget.", regToken.token)
+                  response.json({
+                    "message": "That bank is kaput."
+                  })
                 }
-            )}
+              )
+            }
           )
-          }
-        )
-        break;
-      default:
-        console.log('SOME SORT OF ERROR', req.body.code, req.body.message)
-        break
-      }
-    })
+        }
+      )
+      break;
+    default:
+      console.log('SOME SORT OF ERROR', req.body.code, req.body.message)
+      break
+    }
+  })
 
 
 // transaction endpoints
@@ -459,7 +519,7 @@ app.get('/api/transactions/:transId', function (req, res) {
 });
 
 // edit a specific transaction and then return that updated transaction via new: true
-app.patch('/api/transactions/:transid', (req, res)=>{
+app.patch('/api/transactions/:transid', (req, res) => {
   console.log(req.body);
   Transaction.findByIdAndUpdate(req.params.transId, req.body, {
     new: true
@@ -470,7 +530,7 @@ app.patch('/api/transactions/:transid', (req, res)=>{
   });
 });
 
-app.post('/api/institution', (req, res)=>{
+app.post('/api/institution', (req, res) => {
   let institution = new Institution({
     name: req.body.name,
     products: req.body.products,
@@ -479,7 +539,7 @@ app.post('/api/institution', (req, res)=>{
     plaid_id: req.body.plaid_id,
     institution_type: req.body.institution_type,
   })
-  institution.save((err, doc)=>{
+  institution.save((err, doc) => {
     res.json(doc)
   })
 })
@@ -526,7 +586,7 @@ app.get('/api/subbudget/:id', function (req, res) {
 
 //get just subbudgets for a particular user
 app.get('/api/user/subbudget/:id', function (req, res) {
-  User.findById(req.params.id).deepPopulate(['budget','budget.subbudgets']).exec().then(function (user) {
+  User.findById(req.params.id).deepPopulate(['budget', 'budget.subbudgets']).exec().then(function (user) {
     res.json(user.budget.subbudgets);
   }).catch(function (err) {
     res.status(500).send(err);
@@ -568,6 +628,57 @@ app.post('/api/subbudget/:budgetId', function (req, res) {
 
 // delete a subbudget specific to the user and users budget
 app.delete('/api/subbudget/:subbudgetId/:budgetId', function (req, res) {
+  Subbudget.findById(req.params.subbudgetId).exec().then(function (subbudget) {
+    var targetTransaction;
+    subbudget.transactions.forEach(function (transaction, index) {
+      Transaction.findByIdAndUpdate(transaction, {
+        tagged: false
+      }).exec().then(function (transaction) {
+        console.log('yay');
+      }).catch(function (err) {
+        console.log('error', err);
+        res.status(500).send(err);
+      });
+    });
+    subbudget.splits.forEach(function (split, index) {
+      SplitTransaction.findById(split).exec().then(function (thesplit) {
+        SplitTransaction.remove({
+          transaction: thesplit.transaction
+        }).exec().then(function (removed) {
+          Transaction.findByIdAndUpdate(thesplit.transaction, {
+            tagged: false
+          }).exec().then(function (transaction) {
+            console.log('transaction', transaction);
+          }).catch(function (err) {
+            console.log('error', err);
+          });
+          console.log('removed', removed);
+        });
+      });
+    });
+    Subbudget.remove({
+      _id: req.params.subbudgetId
+    }).exec().then(function (subbudget) {
+      Budget.findByIdAndUpdate(req.params.budgetId, {
+        $pull: {
+          subbudgets: req.params.subbudgetId
+        }
+      }, {
+        new: true
+      }).exec().then(function (budget) {
+        res.status(204).send(budget);
+      }).catch(function (err) {
+        console.log(err);
+      });
+    }).catch(function (err) {
+      console.log(err);
+    });
+  });
+});
+
+//TODO Flag for transation: seen/unseen 
+
+/*app.delete('/api/subbudget/:subbudgetId/:budgetId', function (req, res) {
   Subbudget.remove({
     _id: req.params.subbudgetId
   }).exec().then(function (deletedSubbudget) {
@@ -583,7 +694,8 @@ app.delete('/api/subbudget/:subbudgetId/:budgetId', function (req, res) {
   }).catch(function (err) {
     res.status(500).send(err);
   });
-});
+});*/
+
 
 // BUDGET ENDPOINTS
 
