@@ -7,6 +7,7 @@ let accountSchema = new mongoose.Schema({
   institution_type: String,
   institution: {type: String, ref: 'Institution'},
   type: String,
+  active: {type: Boolean, default: true},
   subtype: String,
   name: String,
   created: {type: Date, default: Date.now}

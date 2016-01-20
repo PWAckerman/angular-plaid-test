@@ -26,7 +26,7 @@ exports.addUser = (req, res)=>{
 
 exports.populateUser = (req, res)=>{
   User.findById(req.params.id)
-    .deepPopulate(['budget', 'budget.subBudgets', 'budget.subbudgets.transactions', 'budget.subbudgets.splits'])
+    .deepPopulate(['budget', 'budget.subBudgets', 'accounts', 'accounts.institution', 'budget.subbudgets.transactions', 'budget.subbudgets.splits'])
     .exec()
     .then((doc)=>{
       res.json(doc)

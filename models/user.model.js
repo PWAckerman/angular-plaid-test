@@ -5,15 +5,10 @@ let mongoose = require('mongoose'),
 let userSchema = new mongoose.Schema({
   userName: String,
   userPassword: String,
-  tokens: [{
-    "institution": String,
-    "public_token": String,
-    "access_token":String
-  }],
-  institutions: [{type: String}],
+  accounts: [{type: String, ref: 'Account'}],
+  institutions: [{type: String, ref: 'Institution'}],
   created: {type: Date, default: Date.now},
-  budget: {type: String, ref: 'Budget'},
-  lastPull: Date
+  budget: {type: String, ref: 'Budget'}
 })
 
 userSchema.plugin(deepPopulate)

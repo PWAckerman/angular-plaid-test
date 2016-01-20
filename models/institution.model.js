@@ -6,7 +6,9 @@ let institutionSchema = new mongoose.Schema({
   name: String,
   products: [{type: String}],
   logo: String,
+  colors: Object,
   plaid_id: String,
+  institution_type: String,
   added: {type: Date, default: Date.now}
 })
 
