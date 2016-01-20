@@ -158,7 +158,7 @@ app
     }
   })
   //Pushbudget-facing authentication endpoint
-  .post('/authenticate/:userid', (req, response) => {
+  .post('/api/authenticate/:userid', (req, response) => {
     let public_token = req.body.public_token;
     let tokens = new Tokens({
       user: req.params.userid,
@@ -172,8 +172,18 @@ app
         console.log('RES', res)
         tokens.access_token = res.access_token;
         tokens.save()
+        response.json({message: "User added!"})
       }
     })
+  })
+  .patch('/api/authenticate/:userid/refresh/:access_token', (req, response)=>{
+      plaidClient.exchangeToken(req.body.public_token, (err, res) => {
+          Tokens.findOneAndUpdate({user: req.params.userid, access_token: req.params.access_token}, {public_token: req.body.public_token, access_token: res.access_token}, {new: true}).exec().then(
+            (token) => {
+              response.json(token)
+            }
+          )
+      })
   })
 
 // break out into user routes/controllers
@@ -201,6 +211,13 @@ app
 
 //
 //
+.get('/api/token/:access_token/user/:userId', (req, response)=>{
+  Tokens.findOne({access_token: req.params.access_token, user: req.params.userId }).exec().then(
+    (tokens) => {
+      response.json(tokens)
+    }
+  )
+})
 .get('/plaidTransactions/:id', (req, response) => {
     User.findById(req.params.id).exec((err, res) => {
       console.log("about to plaid..", req.params.id);
@@ -215,15 +232,19 @@ app
       }
     })
   })
-  .delete('/user/plaid/:access_token/:userid', (req, response) => {
-    plaidClient.deleteConnectUser(req.params.access_token, (err, res) => {
-      console.log(res)
-      Accounts.remove({
-        user: req.params.userid
-      }, (err) => {
-        err ? console.log(err) : response.json(res)
-      })
-    })
+  .delete('/api/user/plaid/:access_token/:userid', (req, response) => {
+    console.log(req.params.access_token)
+    console.log(req.params.userid)
+    //DO NOT ACTIVATE UNTIL PRODUCTION
+    // plaidClient.deleteConnectUser(req.params.access_token, (err, res) => {
+    //   console.log(res)
+    //   Accounts.remove({
+    //     user: req.params.userid
+    //   }, (err) => {
+    //     err ? console.log(err) : response.json({message: 'SUCCESS'})
+    //   })
+    // })
+    response.json({message: `SUCCESS`})
   })
   .post('/user/', (req, response) => {
 
@@ -676,7 +697,7 @@ app.delete('/api/subbudget/:subbudgetId/:budgetId', function (req, res) {
   });
 });
 
-//TODO Flag for transation: seen/unseen 
+//TODO Flag for transation: seen/unseen
 
 /*app.delete('/api/subbudget/:subbudgetId/:budgetId', function (req, res) {
   Subbudget.remove({
