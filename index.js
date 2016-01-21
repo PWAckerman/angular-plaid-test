@@ -27,6 +27,7 @@ let plaid = require('plaid'),
   Blob = require("./models/blob.model.js"),
   Institution = require("./models/institution.model.js"),
   SplitTransaction = require("./models/splittransaction.model.js"),
+  Device = require("./models/device.model.js"),
   userCtrl = require("./controllers/user.server.controller.js"),
   authCtrl = require("./controllers/auth.server.controller.js"),
   secrets = require("./secrets.js"),
@@ -832,14 +833,34 @@ app.post('/api/split/:bucketId', function (req, res) {
   }
 });
 
+// Device Endpoints
+
+app.post('/api/device/', function(req, res) {
+  var device = new Device(req.body);
+  device.save().then(function(device) {
+    res.status(200).send(device);
+  }).catch(function(err) {
+    res.status(500).send(err);
+  })
+});
+
+app.post('/api/registerToken', function(req, res) {
+  var regtoken = new RegToken(req.body);
+  regtoken.save().then(function(token) {
+    res.status(200).send(token);
+  }).catch(function(err) {
+    res.status(500).send(err);
+  });
+});
+
 //user register&login
 
-/*var isValidPassword = function (user, password) {
+var isValidPassword = function (user, password) {
   return bCrypt.compareSync(password, user.userPassword);
 }
 var createHash = function (password) {
   return bCrypt.hashSync(password, bCrypt.genSaltSync(10), null);
-}*/
+}
 
 passport.serializeUser(function (user, done) {
   done(null, user);
@@ -851,7 +872,7 @@ passport.deserializeUser(function (id, done) {
   });
 });
 
-/*passport.use('signup', new LocalStrategy({
+passport.use('signup', new LocalStrategy({
     passReqToCallback: true
   },
   function (req, username, password, done) {
@@ -892,7 +913,7 @@ passport.deserializeUser(function (id, done) {
     // };
     // process.nextTick(findOrCreateUser);
   }
-));*/
+));
 
 
 passport.use('login', new LocalStrategy({
@@ -927,18 +948,27 @@ passport.use('login', new LocalStrategy({
   }));
 
 
+// Authentication endpoints 
+
 // protect routes with authCtrl.isAuthenticated()
 app.post('/login', passport.authenticate('login'), function (req, res) {
-  console.log('CALLBACK');
-  res.status(200).send(req.user);
-});
-
-app.get('/currentuser', function (req, res) {
   console.log(req.user);
   res.status(200).send(req.user);
 });
 
+app.get('/currentuser', function (req, res) {
+  res.status(200).send(req.user);
+});
 
+app.post('/signup', passport.authenticate('signup'), function (req, res) {
+  console.log('do we have a session', req.user);
+  res.status(200).send(req.user);
+});
+
+app.get('/logout', function(req, res){
+  req.logout();
+  res.status(200).send('logged out');
+}); 
 
 /*app.post('/signup', passport.authenticate('signup'), function(req, res) {
   res.status(200).send(req.user);
