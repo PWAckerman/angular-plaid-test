@@ -26,6 +26,9 @@ let subBudgetSchema = new mongoose.Schema({
     type: String,
     ref: 'SplitTransaction'
   }],
+  color: String,
+  goodData: Boolean,
+  totalDisplay: String,
   sum: Number
 })
 

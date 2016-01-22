@@ -7,7 +7,9 @@ let budgetSchema = new mongoose.Schema({
   name: String,
   amount: Number,
   subbudgets: [{type: String, ref: 'SubBudget'}],
-  created: {type: Date, default: Date.now}
+  created: {type: Date, default: Date.now},
+  sum: Number,
+  savings: Number
 })
 
 budgetSchema.plugin(deepPopulate)
