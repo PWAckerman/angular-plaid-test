@@ -12,6 +12,7 @@ let plaid = require('plaid'),
   bCrypt = require('bcrypt-nodejs'),
   flash = require('connect-flash'),
   mongoo = require("./mongoose.js"),
+  q = require("q"),
   plaidClient = {},
 
   //models controllers etc.
@@ -71,6 +72,34 @@ function messageAssembler(body, regToken) {
 }
 
 let sender = new gcm.Sender(secrets.secrets.gcm_key)
+
+function subBudgetSum(sbref){
+  var dfd = q.defer();
+  SubBudget.findById(sbref).deepPopulate(['transactions', 'splits']).exec().then((sb)=>{
+    var tot = sb.transactions.reduce(function(total, transaction){
+      return total + transaction.amount
+    }, 0) + sb.splits.reduce(function(total, split){
+      return total + split.amount
+    }, 0)
+    dfd.resolve(tot)
+  })
+  return dfd.promise;
+}
+
+function budgetSum(budgetref){
+  Budget.findById(budgetref).exec().then((budget)=>{
+    let promises = budget.subbudgets.map(function(sbref){
+      return subBudgetSum(sbref)
+    })
+    q.all(promises).done((hey)=>{
+      console.log(hey);
+      return hey
+    })
+  })
+}
+
+budgetSum('5696e7ea78f86e102af85b88')
+
   // endpoint for adding banks via plaid
 app
   .use(cors())
@@ -93,10 +122,16 @@ app
   })
   //GCM Push Notification Test endpoint
   .post('/gcm', (req, response) => {
-    sender.sendNoRetry(pushyMessage, {
+    let meanMessage = new gcm.Message()
+    meanMessage.addNotification({
+      title: 'PushBudget',
+      body: req.body.message,
+      icon: 'ic_launcher'
+    })
+    sender.sendNoRetry(meanMessage, {
       registrationTokens: ['cPccdlz7JbU:APA91bE53PH5CIugwV8OddfosOYxvjSqXQ8rqi9v2JcYk3hxCo3BzPuO7K9sNVCrJ9omWYvSkkVKT_Nrg8sK9okkBEVKE8qihiqUwSs8syoA9-YuNhAZVKMYH9rtlcP9Zg58ypNCDq7X']
     }, (err, res) => {
-      (err) ? console.error(err): response.json(pushyMessage)
+      (err) ? console.error(err): response.json(meanMessage)
     })
   })
   //GCM Push Registration Webhook
@@ -948,7 +983,7 @@ passport.use('login', new LocalStrategy({
   }));
 
 
-// Authentication endpoints 
+// Authentication endpoints
 
 // protect routes with authCtrl.isAuthenticated()
 app.post('/login', passport.authenticate('login'), function (req, res) {
@@ -968,7 +1003,7 @@ app.post('/signup', passport.authenticate('signup'), function (req, res) {
 app.get('/logout', function(req, res){
   req.logout();
   res.status(200).send('logged out');
-}); 
+});
 
 /*app.post('/signup', passport.authenticate('signup'), function(req, res) {
   res.status(200).send(req.user);
