@@ -25,7 +25,8 @@ let subBudgetSchema = new mongoose.Schema({
   splits: [{
     type: String,
     ref: 'SplitTransaction'
-  }]
+  }],
+  sum: Number
 })
 
 subBudgetSchema.plugin(deepPopulate)
