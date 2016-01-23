@@ -5,11 +5,11 @@ let mongoose = require('mongoose'),
 let budgetSchema = new mongoose.Schema({
   user: {type: String, ref: 'User'},
   name: String,
-  amount: Number,
+  amount: {type: Number, default: 0},
   subbudgets: [{type: String, ref: 'SubBudget'}],
   created: {type: Date, default: Date.now},
-  sum: Number,
-  savings: Number
+  sum: {type: Number, default: 0},
+  savings: {type: Number, default: 0}
 })
 
 budgetSchema.plugin(deepPopulate)

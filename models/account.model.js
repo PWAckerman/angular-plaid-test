@@ -10,6 +10,7 @@ let accountSchema = new mongoose.Schema({
   active: {type: Boolean, default: true},
   subtype: String,
   name: String,
+  digits: String,
   created: {type: Date, default: Date.now}
 })
 

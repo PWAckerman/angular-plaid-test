@@ -86,6 +86,28 @@ function subBudgetSum(sbref){
   return dfd.promise;
 }
 
+function subBudgetSumUpdate(sbref){
+  subBudgetSum(sbref).then(function(tot){
+    SubBudget.findByIdAndUpdate(sbref, {sum: tot}, {new: true}).then(
+      (sub) => console.log(sub)
+    )
+  })
+}
+
+function sumBudget(budgetref){
+  var dfd = q.defer()
+  Budget.findById(budgetRef).deepPopulate(['subbudgets']).exec().then(
+    (budget) => {
+      return budget.subbudgets.reduce((tot, sub)=>{
+        return tot += sub.sum
+      },0)
+    }
+  )
+}
+
+
+
+
 function budgetSum(budgetref){
   Budget.findById(budgetref).exec().then((budget)=>{
     let promises = budget.subbudgets.map(function(sbref){
@@ -98,7 +120,18 @@ function budgetSum(budgetref){
   })
 }
 
-budgetSum('5696e7ea78f86e102af85b88')
+function updatePassword(password, userId){
+  var dfd = q.defer()
+  var hash = bCrypt.hashSync(password, bCrypt.genSaltSync(10), null)
+  User.findByIdAndUpdate(userId, {userPassword: hash}, {new: true}).exec().then(
+    (user)=>{
+      dfd.resolve(user)
+    }
+  )
+  return dfd.promise;
+}
+
+
 
   // endpoint for adding banks via plaid
 app
@@ -122,7 +155,7 @@ app
   })
   //GCM Push Notification Test endpoint
   .post('/gcm', (req, response) => {
-    let meanMessage = new gcm.Message()
+    let meanMessage = new gcm.Message();
     meanMessage.addNotification({
       title: 'PushBudget',
       body: req.body.message,
@@ -244,6 +277,17 @@ app
       response.json(doc)
     })
   })
+  .patch('/user/:id/password', (req, response) => {
+     checkHash(req.body.currentPassword, id).then(
+       (valid)=>{
+         !valid ? response.json({message: "That password is invalid"}) : updatePassword(req.body.newPassword, id).then(
+           (user) =>{
+             response.json(user)
+           }
+         )
+       }
+     )
+  })
 
 //
 //
@@ -341,6 +385,7 @@ app
                 institution: institution._id,
                 name: `${account.meta.official_name} *${account.meta.number}`,
                 type: account.type,
+                digits: account.meta.number,
                 subtype: account.subtype || '',
                 access_token: req.body.access_token
               })
@@ -358,17 +403,19 @@ app
             if (transaction.category) {
               cat = transaction.category
             }
-            let newTrans = new Transaction({
-              user: res[0].user,
-              name: transaction.name,
-              account: transaction._account,
-              amount: transaction.amount,
-              plaid_id: transaction._id,
-              posted: transaction.date,
-              category: cat
-            })
-            console.log(newTrans)
-            newTrans.save()
+            if(transaction.amount >= 0){
+              let newTrans = new Transaction({
+                user: res[0].user,
+                name: transaction.name,
+                account: transaction._account,
+                amount: transaction.amount,
+                plaid_id: transaction._id,
+                posted: transaction.date,
+                category: cat
+              })
+              console.log(newTrans)
+              newTrans.save()
+            }
           })
           RegToken.find({
             user: res[0].user
@@ -399,17 +446,19 @@ app
               if (transaction.category) {
                 cat = transaction.category
               }
-              let newTrans = new Transaction({
-                user: res[0].user,
-                name: transaction.name,
-                account: transaction._account,
-                amount: transaction.amount,
-                plaid_id: transaction._id,
-                posted: transaction.date,
-                category: cat
-              })
-              console.log(newTrans)
-              newTrans.save()
+              if(transaction.amount >= 0){
+                let newTrans = new Transaction({
+                  user: res[0].user,
+                  name: transaction.name,
+                  account: transaction._account,
+                  amount: transaction.amount,
+                  plaid_id: transaction._id,
+                  posted: transaction.date,
+                  category: cat
+                })
+                console.log(newTrans)
+                newTrans.save()
+              }
             })
             Tokens.findByIdAndUpdate(res[0]._id, {
               lastPull: Date.now()
@@ -451,11 +500,7 @@ app
     case 3:
       console.log('REMOVED TRANSACTION')
       req.body.removed_transactions.map((transaction_id) => {
-        Transaction.remove({
-          plaid_id: transaction_id
-        }).exec().then((transaction) => {
-          console.log(transaction);
-        })
+        deepEraseTrans(transaction_id);
       })
       Tokens.find({
         access_token: req.body.access_token
@@ -601,16 +646,165 @@ app.post('/api/institution', (req, res) => {
   })
 })
 
+function deleteSplit(splitRef){
+  SplitTransaction.remove({_id: splitRef}).exec().then(
+    (split)=>{
+      console.log(split)
+    }
+  )
+}
+
+function deleteTrans(transRef){
+  Transaction.remove({_id: transRef}).exec().then(
+    (trans)=>{
+      console.log(trans)
+    }
+  )
+}
+
+function findTransaction(transId){
+  var dfd = q.defer()
+  console.log('finding trans')
+  Transaction.findById(transId).exec().then(
+    (trans)=>{
+      dfd.resolve(trans)
+    }
+  )
+  return dfd.promise
+}
+
+function findSplits(transId){
+  var dfd = q.defer()
+  console.log('finding splits')
+  console.log(transId)
+  SplitTransaction.find({transaction: transId}).exec().then(
+    (splits)=>{
+      console.log("SPLITS", splits)
+      console.log("RESOLVING SPLITS")
+      dfd.resolve(splits)
+    }
+  )
+  return dfd.promise
+}
+
+function findUser(userId){
+  var dfd = q.defer()
+  console.log('finding user')
+  User.findById(userId).exec().then(
+    (user)=>{
+      dfd.resolve(user)
+    }
+  )
+  return dfd.promise
+}
+
+function findBudget(budgetId){
+  var dfd = q.defer()
+  console.log('finding budget')
+  Budget.findById(budgetId).populate('subbudgets').exec().then(
+    (budget)=>{
+      dfd.resolve(budget)
+    }
+  )
+  return dfd.promise
+}
+
+function findSubBudgets(budget){
+  return budget.subbudgets.map((sub)=>{
+    return sub
+  })
+}
+
+function findTransInSubAndDelete(sub, transid){
+  console.log("SUB", sub)
+  console.log("TRANS", transid)
+  let present = sub.transactions.indexOf(transid)
+  present === -1 ? false: SubBudget.findByIdAndUpdate(sub._id, {$pull: {transactions: transid}}).exec(
+    (trans)=>{
+      console.log('IM DELETING A TRANSACTION')
+      deleteTrans(transid)
+    }
+  )
+}
+
+function findSplitsInSubAndDelete(sub, split){
+  let present = sub.splits.indexOf(split._id)
+  present === -1 ? false: SubBudget.findByIdAndUpdate(sub._id, {$pull: {splits: split._id}}).exec(
+    (split)=>{
+      console.log('IM DELETING A SPLIT TRANSACTION')
+      deleteSplit(split._id)
+      deleteTrans(split.transaction)
+    }
+  )
+}
+
+function deepEraseTrans(transaction){
+  console.log("IT BEGINS")
+  let userid;
+  let splitsColl = [];
+  let transey;
+  findTransaction(transaction)
+  .then(
+    (transaction, err)=> {
+      console.log(transaction);
+      console.log("YOU MADE IT TO FIND TRANSACTION")
+      userid = transaction.user
+      transey = transaction
+      return findSplits(transaction._id)
+    }
+  ).then(
+    (splits)=> {
+      console.log("YOU MADE IT TO FINDSPLITS")
+      console.log(userid)
+      if(!splits.length){
+        console.log("No SPLITS")
+      } else if (splits.length) {
+        console.log("THESE ARE SPLITS", splits)
+        transey = ''
+        splitsColl = splits;
+      }
+      return findUser(userid)
+    }
+  ).then(
+    (user)=>{
+      console.log("YOU MADE IT TO FIND USER")
+      return findBudget(user.budget)
+    }
+  ).then(
+    (budget)=>{
+      var dfd = q.defer()
+      console.log("YOU MADE IT TO FIND SUBBUDGET")
+      console.log("SUBBUDGETS", findSubBudgets(budget))
+      dfd.resolve(findSubBudgets(budget))
+      return dfd.promise
+    }
+  ).then((subs)=>{
+    subs.forEach(
+      (sub)=>{
+        console.log("WE'RE FOR EACHING")
+        console.log(transey)
+        if(transey){
+          console.log("There is a transaction, and this is it:", transey)
+          findTransInSubAndDelete(sub, transey._id)
+        } else if(splitsColl){
+          console.log("THERE ARE SPLITS WHAT")
+        splitsColl.forEach((split)=>{
+          console.log("gonna delete")
+          findSplitsInSubAndDelete(sub, split)
+        })
+      }
+    })
+  })
+}
+
+
+
+
 // delete a specific transaction and then return an empty object on success
 //TODO
-app.delete('/api/transactions/:transId', function (req, res) {
-  Transaction.remove({
-    _id: req.params.transId
-  }).exec().then(function (transaction) {
-    res.status(204).send(transaction);
-  }).catch(function (err) {
-    res.status(500).send(err);
-  });
+app.delete('/api/transactions/:transId', (req, res)=>{
+  deepEraseTrans(req.params.transId);
+  res.status(204).send();
 });
 
 // get untagged transactions specific to user
@@ -890,16 +1084,29 @@ app.post('/api/registerToken', function(req, res) {
 
 //user register&login
 
-var isValidPassword = function (user, password) {
+function isValidPassword(user, password) {
   return bCrypt.compareSync(password, user.userPassword);
 }
-var createHash = function (password) {
+function createHash(password) {
   return bCrypt.hashSync(password, bCrypt.genSaltSync(10), null);
 }
+
+function checkHash(password, userId) {
+  var dfd = q.defer()
+  User.findById(userId).exec().then(
+    (user) =>{
+      dfd.resolve(bCrypt.compareSync(password, user.userPassword))
+    }
+  )
+  return dfd.promise
+}
+
+setTimeout(function(){checkHash("a", "5696bd87e4b07f04a7491c6b")}, 5000)
 
 passport.serializeUser(function (user, done) {
   done(null, user);
 });
+
 
 passport.deserializeUser(function (id, done) {
   User.findById(id, function (err, user) {
@@ -916,7 +1123,7 @@ passport.use('signup', new LocalStrategy({
     // find a user in Mongo with provided username
     User.findOne({
       'userName': username
-    }, function (err, user) {
+    }, (err, user)=>{
       // In case of any error return
       if (err) {
         console.log('Error in SignUp: ' + err);
@@ -935,12 +1142,18 @@ passport.use('signup', new LocalStrategy({
         newUser.userPassword = createHash(password);
 
         // save the user
-        newUser.save(function (err) {
+        newUser.save((err, userdoc)=>{
           if (err) {
             console.log('Error in Saving user: ' + err);
             throw err;
           }
-          console.log('User Registration succesful');
+          let budget = new Budget({
+            user: userdoc._id
+          })
+          budget.save((err, budgetdoc)=>{
+            User.findByIdAndUpdate(budgetdoc.user, {$set: {budget: budgetdoc._id}})
+          })
+          console.log('User Registration successful');
           return done(null, newUser);
         });
       }
@@ -962,6 +1175,7 @@ passport.use('login', new LocalStrategy({
       },
       function (err, user) {
         // In case of any error, return using the done method
+        console.log('USER IN PASSPORT', user)
         if (err) {
           return done(err);
         }
@@ -971,10 +1185,10 @@ passport.use('login', new LocalStrategy({
           return done(null, false);
         }
         // User exists but wrong password, log the error
-        /*  if (!isValidPassword(user, password)) {
-    console.log('Invalid Password');
-    return done(null, false,
-  }*/
+        if (!isValidPassword(user, password)) {
+            console.log('Invalid Password');
+            return done(null, false);
+        }
         // User and password both match, return user from
         // done method which will be treated like success
         return done(null, user);
@@ -986,7 +1200,7 @@ passport.use('login', new LocalStrategy({
 // Authentication endpoints
 
 // protect routes with authCtrl.isAuthenticated()
-app.post('/login', passport.authenticate('login'), function (req, res) {
+app.post('/login', passport.authenticate('login'), (req, res)=> {
   console.log(req.user);
   res.status(200).send(req.user);
 });
@@ -995,12 +1209,12 @@ app.get('/currentuser', function (req, res) {
   res.status(200).send(req.user);
 });
 
-app.post('/signup', passport.authenticate('signup'), function (req, res) {
+app.post('/signup', passport.authenticate('signup'), (req, res)=> {
   console.log('do we have a session', req.user);
   res.status(200).send(req.user);
 });
 
-app.get('/logout', function(req, res){
+app.get('/logout', (req, res)=>{
   req.logout();
   res.status(200).send('logged out');
 });

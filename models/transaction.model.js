@@ -22,6 +22,10 @@ let transactionSchema = new mongoose.Schema({
   tagged: {
     type: Boolean,
     default: false
+  },
+  manual: {
+    type: Boolean,
+    default: false
   }
 });
 
