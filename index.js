@@ -580,7 +580,7 @@ app
                   console.log(regToken)
                   messageAssembler("Your account has been locked. Please check with your financial institution, then re-link through PushBudget.", regToken.token)
                   response.json({
-                    "message": "That bank is kaput."
+                    "message": "The institution has locked this account."
                   })
                 }
               )
