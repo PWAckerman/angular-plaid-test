@@ -8,7 +8,8 @@ let userSchema = new mongoose.Schema({
   accounts: [{type: String, ref: 'Account'}],
   institutions: [{type: String, ref: 'Institution'}],
   created: {type: Date, default: Date.now},
-  budget: {type: String, ref: 'Budget'}
+  budget: {type: String, ref: 'Budget'},
+  savings: Number
 })
 
 userSchema.plugin(deepPopulate)
