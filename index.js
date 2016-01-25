@@ -33,12 +33,12 @@ let plaid = require('plaid'),
   authCtrl = require("./controllers/auth.server.controller.js"),
   secrets;
 
+console.log(process.env.NODE_ENV);
 if (process.env.NODE_ENV === 'production') {
   console.log('case 11111');
   secrets = require("./herokuConfig.js");
 } else {
   console.log('case 22222');
-  secrets = require("./secrets.js");
 }
 
 // configs and application
