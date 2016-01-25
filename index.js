@@ -31,7 +31,13 @@ let plaid = require('plaid'),
   Device = require("./models/device.model.js"),
   userCtrl = require("./controllers/user.server.controller.js"),
   authCtrl = require("./controllers/auth.server.controller.js"),
-  secrets;
+  secrets,
+
+
+  // configs and application
+  plaid_env = plaid.environments.tartan,
+  app = express(),
+  db = mongoo.db();
 
 console.log(process.env.NODE_ENV);
 if (process.env.NODE_ENV === 'production') {
@@ -40,11 +46,6 @@ if (process.env.NODE_ENV === 'production') {
 } else {
   console.log('case 22222');
 }
-
-// configs and application
-plaid_env = plaid.environments.tartan,
-  app = express(),
-  db = mongoo.db()
 
 db.connection.once('open', () => {
   console.log('Db is connected')
