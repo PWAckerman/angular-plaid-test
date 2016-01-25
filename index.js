@@ -31,7 +31,6 @@ let plaid = require('plaid'),
   Device = require("./models/device.model.js"),
   userCtrl = require("./controllers/user.server.controller.js"),
   authCtrl = require("./controllers/auth.server.controller.js"),
-
   secrets;
 
 if (process.env.NODE_ENV === 'production') {
