@@ -1002,8 +1002,10 @@ app.get('/api/budget/:userId', function (req, res) {
   Budget.findOne({
     user: req.params.userId
   }).exec().then(function (budget) {
+    console.log('hereeee');
     res.status(200).send(budget);
   }).catch(function (err) {
+    console.log('hereeee34343443');
     res.status(500).send(err);
   });
 });
@@ -1278,5 +1280,6 @@ app.get('/logout', (req, res) => {
   res.status(200).send(req.user);
 });*/
 
-
-app.listen(3001, () => console.log('Listening on 3001'));
+var port = process.env.PORT || 3001;
+console.log('PORTTTTT', port);
+app.listen(port, () => console.log('Listening on 3001'));
