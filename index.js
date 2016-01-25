@@ -1282,4 +1282,4 @@ app.get('/logout', (req, res) => {
 
 var port = process.env.PORT || 3001;
 console.log('PORTTTTT', port);
-app.listen(port, () => console.log('Listening on 3001'));
+app.listen(port, () => console.log('Listening on ' + port));
