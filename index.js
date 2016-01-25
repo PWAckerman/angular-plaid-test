@@ -35,8 +35,10 @@ let plaid = require('plaid'),
   secrets;
 
 if (process.env.NODE_ENV === 'production') {
+  console.log('case 11111');
   secrets = require("./herokuConfig.js");
 } else {
+  console.log('case 22222');
   secrets = require("./secrets.js");
 }
 
