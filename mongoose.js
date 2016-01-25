@@ -1,6 +1,16 @@
 'use strict';
 let mongoose = require("mongoose");
-let secrets = require("./secrets")
+
+var secrets;
+
+if (process.env.NODE_ENV === 'production') {
+  console.log('case 11111');
+  secrets = require("./herokuConfig.js");
+} else {
+  secrets = require("./secrets.js");
+  console.log('case 22222');
+}
+
 mongoose.Promise = require("q").Promise;
 
 module.exports = exports = {}
