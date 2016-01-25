@@ -7,6 +7,7 @@ if (process.env.NODE_ENV === 'production') {
   console.log('case 11111');
   secrets = require("./herokuConfig.js");
 } else {
+  secrets = require("./secrets.js");
   console.log('case 22222');
 }
 

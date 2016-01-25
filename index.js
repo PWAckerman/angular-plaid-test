@@ -45,6 +45,7 @@ if (process.env.NODE_ENV === 'production') {
   secrets = require("./herokuConfig.js");
 } else {
   console.log('case 22222');
+  secrets = require("./secrets.js");
 }
 
 db.connection.once('open', () => {
