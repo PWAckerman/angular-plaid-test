@@ -1,7 +1,7 @@
 'use strict';
 let mongoose = require("mongoose");
 
-const secrets;
+var secrets;
 
 if (process.env.NODE_ENV === 'production') {
   console.log('case 11111');
