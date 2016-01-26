@@ -5,6 +5,7 @@ let plaid = require('plaid'),
   express = require('express'),
   bodyParser = require('body-parser'),
   cors = require('cors'),
+  fs = require('fs'),
   environment = "development",
   session = require('express-session'),
   passport = require('passport'),
@@ -13,6 +14,7 @@ let plaid = require('plaid'),
   flash = require('connect-flash'),
   mongoo = require("./mongoose.js"),
   q = require("q"),
+  apn = require("apn"),
   plaidClient = {},
 
   //models controllers etc.
@@ -31,7 +33,7 @@ let plaid = require('plaid'),
   Device = require("./models/device.model.js"),
   userCtrl = require("./controllers/user.server.controller.js"),
   authCtrl = require("./controllers/auth.server.controller.js"),
-  secrets,
+  secrets, cert, apnkey,
 
 
   // configs and application
@@ -39,6 +41,12 @@ let plaid = require('plaid'),
   app = express(),
   db = mongoo.db();
 
+fs.readFile("cert.pem", (err,data)=>{
+  cert = data
+})
+fs.readFile("key.pem", (err,data)=>{
+  apnkey = data
+})
 console.log(process.env.NODE_ENV);
 if (process.env.NODE_ENV === 'production') {
   console.log('case 11111');
@@ -82,6 +90,60 @@ function messageAssembler(body, regToken) {
 }
 
 let sender = new gcm.Sender(secrets.secrets.gcm_key)
+let apnOptions = {
+  cert: cert,
+  key: apnkey,
+  production: false
+}
+let apnConnection = new apn.Connection(apnOptions);
+let myDevice = new apn.Device("0b6abb931ec919d435a76608e4b569fce3efcb210caec470009e71720a4c53fe");
+let note = new apn.Notification();
+note.expiry = Math.floor(Date.now() / 1000) + 3600; // Expires 1 hour from now.
+note.badge = 3;
+note.sound = "ping.aiff";
+note.alert = "\uD83D\uDCE7 \u2709 Hey George";
+note.payload = {'messageFrom': 'PushBudget'};
+
+app.post('/apntest', (req, res)=>{
+  console.log("TESTING APN")
+  apnConnection.pushNotification(note, myDevice);
+})
+
+apnConnection.on("connected", ()=>{
+  console.log("Connected");
+})
+
+apnConnection.on("transmitted", (note, device)=>{
+  console.log(`Notification transmitted to ${device.token.toString("hex")}`)
+})
+
+apnConnection.on("transmissionError", (err, note, device)=>{
+  console.log('NOTE', note)
+  console.log('DEVICE', device.token.toString("hex"))
+  console.log("we got an error", err)
+})
+
+apnConnection.on("timeout", ()=>{
+  console.log("Connection timeout");
+})
+
+apnConnection.on("disconnected", ()=>{
+  console.log("disconnected")
+})
+
+apnConnection.on("socketError", console.error);
+
+let fbOptions = {
+    "batchFeedback": true,
+    "interval": 300
+}
+
+let feedback = new apn.Feedback(fbOptions);
+  feedback.on("feedback", (devices)=>{
+    devices.forEach((item)=> {
+        console.log(item)
+    });
+});
 
 function subBudgetSum(sbref) {
   var dfd = q.defer();
@@ -1072,9 +1134,21 @@ app.patch('/api/budget/:budgetId', function (req, res) {
 // there are no splits, if not...
 // split transactions are distributed to
 // corresponding buckets
-app.post('/api/split/:bucketId', function (req, res) {
+app.post('/api/split/:subbudgetId', function (req, res) {
+  // {
+  //   transid: "4958hofa9s8y[o;ih5]",
+  //   splits: [
+  //     {
+  //       amount: '100',
+  //       subbudgetId: '234ilg3i2uy498324hkj'
+  //     },{
+  //       amount: '100',
+  //       subbudgetId: '234ilg3i2uy498324hkj'
+  //     }
+  //   ]
+  // }
   if (req.body.splits.length === 0) {
-    Subbudget.findByIdAndUpdate(req.params.bucketId, {
+    Subbudget.findByIdAndUpdate(req.params.subbudgetId, {
       $addToSet: {
         transactions: req.body.transId
       }
@@ -1096,7 +1170,7 @@ app.post('/api/split/:bucketId', function (req, res) {
         transaction: req.body.transId
       });
       newSplit.save().then(function (newSplit) {
-        Subbudget.findByIdAndUpdate(split.bucketId, {
+        Subbudget.findByIdAndUpdate(split.subbudgetId, {
           $addToSet: {
             splits: newSplit._id
           }

@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "angular-plaid-link": "^1.0.0",
+    "apn": "^1.7.5",
     "bcrypt": "^0.8.5",
     "bcrypt-nodejs": "0.0.3",
     "body-parser": "^1.14.2",
