@@ -1150,11 +1150,11 @@ app.post('/api/split/', function (req, res) {
   //     }
   //   ]
   // }
-  console.log(req.body.transaction);
+  console.log(req.body.transaction.subbudgetId);
   if (req.body.splits.length === 1) {
     Subbudget.findByIdAndUpdate(req.body.transaction.subbudgetId, {
       $addToSet: {
-        transactions: req.body.transaction._id //was .transId and threw error
+        transactions: req.body.transaction.transId //was .transId and threw error
       }
     }, {
       new: true
