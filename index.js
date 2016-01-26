@@ -1162,8 +1162,11 @@ app.post('/api/split/', function (req, res) {
         tagged: true
       }).exec().then(function (transaction) {
         res.status(201).send(transaction);
-      }).catch(function (err) {});
+      }).catch(function (err) {
+        console.log('ERROR 1A', err);
+      });
     }).catch(function (err) {
+      console.log('ERROR 1B', err);
       res.status(500).send(err);
     });
   } else {
@@ -1180,10 +1183,12 @@ app.post('/api/split/', function (req, res) {
         }).exec().then(function (bucket) {
           res.status(200).send(bucket);
         }).catch(function (err) {
+          console.log('ERROR 1', err);
           res.status(500).send(err);
         });
 
       }).catch(function (err) {
+        console.log('ERROR 2', err);
         res.status(500).send(err);
       });
     });
