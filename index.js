@@ -1282,6 +1282,7 @@ passport.use('signup', new LocalStrategy({
             user: userdoc._id
           })
           budget.save((err, budgetdoc) => {
+            console.log("BUDGETDOC", budgetdoc)
             User.findByIdAndUpdate(budgetdoc.user, {
               $set: {
                 budget: budgetdoc._id
