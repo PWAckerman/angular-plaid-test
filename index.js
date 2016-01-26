@@ -1134,9 +1134,12 @@ app.patch('/api/budget/:budgetId', function (req, res) {
 // there are no splits, if not...
 // split transactions are distributed to
 // corresponding buckets
-app.post('/api/split/:subbudgetId', function (req, res) {
+app.post('/api/split/', function (req, res) {
   // {
-  //   transid: "4958hofa9s8y[o;ih5]",
+  //   transaction: {
+        //     transId: 'adsfadsfadsfsdaf',
+        //     subbudgetId: 'adfasdfsdafsdafasf'
+        // },
   //   splits: [
   //     {
   //       amount: '100',
@@ -1148,14 +1151,14 @@ app.post('/api/split/:subbudgetId', function (req, res) {
   //   ]
   // }
   if (req.body.splits.length === 0) {
-    Subbudget.findByIdAndUpdate(req.params.subbudgetId, {
+    Subbudget.findByIdAndUpdate(req.body.transaction.subbudgetId, {
       $addToSet: {
-        transactions: req.body.transId
+        transactions: req.body.transaction.transId
       }
     }, {
       new: true
     }).exec().then(function (bucket) {
-      Transaction.findByIdAndUpdate(req.body.transId, {
+      Transaction.findByIdAndUpdate(req.body.transaction.transId, {
         tagged: true
       }).exec().then(function (transaction) {
         res.status(201).send(transaction);
@@ -1167,7 +1170,7 @@ app.post('/api/split/:subbudgetId', function (req, res) {
     req.body.splits.forEach(function (split, index) {
       let newSplit = new SplitTransaction({
         amount: split.amount,
-        transaction: req.body.transId
+        transaction: req.body.transaction.transId
       });
       newSplit.save().then(function (newSplit) {
         Subbudget.findByIdAndUpdate(split.subbudgetId, {
