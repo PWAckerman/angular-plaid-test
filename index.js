@@ -41,12 +41,12 @@ let plaid = require('plaid'),
   app = express(),
   db = mongoo.db();
 
-fs.readFile("cert.pem", (err,data)=>{
+/*fs.readFile("cert.pem", (err,data)=>{
   cert = data
 })
 fs.readFile("key.pem", (err,data)=>{
   apnkey = data
-})
+})*/
 console.log(process.env.NODE_ENV);
 if (process.env.NODE_ENV === 'production') {
   console.log('case 11111');
@@ -90,7 +90,7 @@ function messageAssembler(body, regToken) {
 }
 
 let sender = new gcm.Sender(secrets.secrets.gcm_key)
-let apnOptions = {
+/*let apnOptions = {
   cert: cert,
   key: apnkey,
   production: false
@@ -143,7 +143,7 @@ let feedback = new apn.Feedback(fbOptions);
     devices.forEach((item)=> {
         console.log(item)
     });
-});
+});*/
 
 function subBudgetSum(sbref) {
   var dfd = q.defer();
