@@ -90,60 +90,60 @@ function messageAssembler(body, regToken) {
 }
 
 let sender = new gcm.Sender(secrets.secrets.gcm_key)
-/*let apnOptions = {
-  cert: cert,
-  key: apnkey,
-  production: false
-}
-let apnConnection = new apn.Connection(apnOptions);
-let myDevice = new apn.Device("0b6abb931ec919d435a76608e4b569fce3efcb210caec470009e71720a4c53fe");
-let note = new apn.Notification();
-note.expiry = Math.floor(Date.now() / 1000) + 3600; // Expires 1 hour from now.
-note.badge = 3;
-note.sound = "ping.aiff";
-note.alert = "\uD83D\uDCE7 \u2709 Hey George";
-note.payload = {'messageFrom': 'PushBudget'};
+  /*let apnOptions = {
+    cert: cert,
+    key: apnkey,
+    production: false
+  }
+  let apnConnection = new apn.Connection(apnOptions);
+  let myDevice = new apn.Device("0b6abb931ec919d435a76608e4b569fce3efcb210caec470009e71720a4c53fe");
+  let note = new apn.Notification();
+  note.expiry = Math.floor(Date.now() / 1000) + 3600; // Expires 1 hour from now.
+  note.badge = 3;
+  note.sound = "ping.aiff";
+  note.alert = "\uD83D\uDCE7 \u2709 Hey George";
+  note.payload = {'messageFrom': 'PushBudget'};
 
-app.post('/apntest', (req, res)=>{
-  console.log("TESTING APN")
-  apnConnection.pushNotification(note, myDevice);
-})
+  app.post('/apntest', (req, res)=>{
+    console.log("TESTING APN")
+    apnConnection.pushNotification(note, myDevice);
+  })
 
-apnConnection.on("connected", ()=>{
-  console.log("Connected");
-})
+  apnConnection.on("connected", ()=>{
+    console.log("Connected");
+  })
 
-apnConnection.on("transmitted", (note, device)=>{
-  console.log(`Notification transmitted to ${device.token.toString("hex")}`)
-})
+  apnConnection.on("transmitted", (note, device)=>{
+    console.log(`Notification transmitted to ${device.token.toString("hex")}`)
+  })
 
-apnConnection.on("transmissionError", (err, note, device)=>{
-  console.log('NOTE', note)
-  console.log('DEVICE', device.token.toString("hex"))
-  console.log("we got an error", err)
-})
+  apnConnection.on("transmissionError", (err, note, device)=>{
+    console.log('NOTE', note)
+    console.log('DEVICE', device.token.toString("hex"))
+    console.log("we got an error", err)
+  })
 
-apnConnection.on("timeout", ()=>{
-  console.log("Connection timeout");
-})
+  apnConnection.on("timeout", ()=>{
+    console.log("Connection timeout");
+  })
 
-apnConnection.on("disconnected", ()=>{
-  console.log("disconnected")
-})
+  apnConnection.on("disconnected", ()=>{
+    console.log("disconnected")
+  })
 
-apnConnection.on("socketError", console.error);
+  apnConnection.on("socketError", console.error);
 
-let fbOptions = {
-    "batchFeedback": true,
-    "interval": 300
-}
+  let fbOptions = {
+      "batchFeedback": true,
+      "interval": 300
+  }
 
-let feedback = new apn.Feedback(fbOptions);
-  feedback.on("feedback", (devices)=>{
-    devices.forEach((item)=> {
-        console.log(item)
-    });
-});*/
+  let feedback = new apn.Feedback(fbOptions);
+    feedback.on("feedback", (devices)=>{
+      devices.forEach((item)=> {
+          console.log(item)
+      });
+  });*/
 
 function subBudgetSum(sbref) {
   var dfd = q.defer();
@@ -1137,9 +1137,9 @@ app.patch('/api/budget/:budgetId', function (req, res) {
 app.post('/api/split/', function (req, res) {
   // {
   //   transaction: {
-        //     transId: 'adsfadsfadsfsdaf',
-        //     subbudgetId: 'adfasdfsdafsdafasf'
-        // },
+  //     transId: 'adsfadsfadsfsdaf',
+  //     subbudgetId: 'adfasdfsdafsdafasf'
+  // },
   //   splits: [
   //     {
   //       amount: '100',
@@ -1293,10 +1293,12 @@ passport.use('signup', new LocalStrategy({
               $set: {
                 budget: budgetdoc._id
               }
+            }).exec().then(function () {
+              return done(null, newUser);
             })
           })
           console.log('User Registration successful');
-          return done(null, newUser);
+
         });
       }
     });
